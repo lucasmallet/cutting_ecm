@@ -12,8 +12,11 @@ library(dplyr)
 library(tidyverse)
 library(vegan)
 ```
-```{r importation}
+
+# IMPORTATION DATA
+```{r }
 # tax-eco table
+setwd("C:/Users/Utilisateur/OneDrive/STAGE-2023_SUEDE/cutting_ecm/TRANSF_DATA")
 tax_table <- read.table("tax_table.txt",header=T,sep="\t") # change #N/A in excel in NA
 length(tax_table)
 tax_table[,c(3:10)] <- lapply(tax_table[,c(3:10)], as.factor) 
@@ -23,19 +26,20 @@ run_data <- read.table("run_data.txt",header=T,sep="\t",na.strings=T,dec=".")
 colnames(run_data)
 
 # clust all
-raw_clust <- read.table("raw_clusters.txt",header=T,sep="\t",na.strings=T,dec=".") %>% dplyr::arrange(desc(raw_clust[,2],))
+setwd("C:/Users/Utilisateur/OneDrive/STAGE-2023_SUEDE/cutting_ecm/RAW_DATA")
+raw_clust <- read.table("raw_clusters.txt",header=T,sep="\t",na.strings=T,dec=".") %>% arrange(desc(Cluster_Size))
 raw_clust[raw_clust==""] <- NA
 raw_clust[,4] <- as.character(raw_clust[,4])
 
 raw_f_clust <- subset(raw_clust,!grepl("PLANT|NF",raw_clust[,4]))
 
 # subset guilds
-ecm <- subset(tax_table,tax_table$primary_lifestyle=="ectomycorrhizal") %>% dplyr::arrange(desc(ecm[,2],))
-sapr <- subset(tax_table,tax_table$primary_lifestyle!="ectomycorrhizal")
+ecm <- subset(tax_table,tax_table$primary_lifestyle=="ectomycorrhizal") %>% arrange(desc(Cluster_Size))
+sapr <- subset(tax_table,tax_table$primary_lifestyle!="ectomycorrhizal") %>% arrange(desc(Cluster_Size))
 ```
 # DATA RUN
 ```{r results mm}
-colnames(run_data)
+colnames(run_data) 
 
 run_data[,1]# 2 runs
 run_data[,25] # 98,5% similarity clustering
@@ -73,7 +77,6 @@ pourc_nb_read_ecm <- ecm_total_read/raw_total_read*100; pourc_nb_read_ecm # pour
 summary(ecm$Cluster_Size) # min, mean, max of ecm reads
 ```
 
-
 # TAXECO TABLE
 ## OVERVIEW_DATA
 ```{r general}
@@ -95,7 +98,6 @@ geom_histogram(bins=20,breaks=seq(12,2985 ,by=100),color="black", fill="darkseag
   ggtitle("") 
 
 hist_cluster_size
-hist_cumul
 ```
 ```{r SAC nb read}
 sac_f_raw <- ggplot(raw_f_clust, aes(x=c(1:3968),y=cumsum(Cluster_Size)))+   geom_line(color="red")+
