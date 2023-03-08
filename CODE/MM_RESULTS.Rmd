@@ -16,7 +16,7 @@ library(vegan)
 # IMPORTATION DATA
 ```{r }
 # tax-eco table
-setwd("C:/Users/Utilisateur/OneDrive/STAGE-2023_SUEDE/cutting_ecm/TRANSF_DATA")
+setwd("H:/REDACTION/RESULTS/cutting_ecm/TRANSF_DATA") # to change, depending on which computer i am working on
 tax_table <- read.table("tax_table.txt",header=T,sep="\t") # change #N/A in excel in NA
 length(tax_table)
 tax_table[,c(3:10)] <- lapply(tax_table[,c(3:10)], as.factor) 
@@ -26,8 +26,8 @@ run_data <- read.table("run_data.txt",header=T,sep="\t",na.strings=T,dec=".")
 colnames(run_data)
 
 # clust all
-setwd("C:/Users/Utilisateur/OneDrive/STAGE-2023_SUEDE/cutting_ecm/RAW_DATA")
-raw_clust <- read.table("raw_clusters.txt",header=T,sep="\t",na.strings=T,dec=".") %>% arrange(desc(Cluster_Size))
+raw_clust <- read.table("raw_clusters.txt",header=T,sep="\t",na.strings=T,dec=".") %>% 
+arrange(desc(Cluster_Size))
 raw_clust[raw_clust==""] <- NA
 raw_clust[,4] <- as.character(raw_clust[,4])
 
