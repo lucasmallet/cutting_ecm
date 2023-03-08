@@ -1,0 +1,220 @@
+---
+title: "Prelim_results"
+output: html_document
+date: "2023-03-06"
+---
+```{r packages}
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+library(vegan)
+library(phyloseq)
+library(forcats)
+```
+
+```{r functions}
+# from MiscMetabar
+as_binary_otu_table <- function(physeq, min_number = 1) {
+  if (!inherits(physeq, "phyloseq")) {
+    stop("physeq must be a phyloseq object")
+  }
+  res <- physeq
+  res@otu_table[res@otu_table >= min_number] <- 1
+  res@otu_table[res@otu_table < min_number] <- 0
+  return(res)
+}
+
+clean_physeq <- function(physeq,
+                         remove_empty_samples = TRUE,
+                         remove_empty_taxa = TRUE,
+                         clean_samples_names = TRUE,
+                         silent = FALSE,
+                         verbose = FALSE) {
+  if (clean_samples_names) {
+    if (!is.null(physeq@refseq)) {
+      if (sum(!names(physeq@refseq) %in% taxa_names(physeq)) > 0) {
+        names(physeq@refseq) <- taxa_names(physeq)
+        if (!silent) {
+          message("Change the samples names in refseq slot")
+        }
+      }
+    }
+    if (!is.null(physeq@tax_table)) {
+      if (sum(!rownames(physeq@tax_table) %in% taxa_names(physeq)) > 0) {
+        rownames(physeq@tax_table) <- taxa_names(physeq)
+        if (!silent) {
+          message("Change the taxa names in tax_table slot")
+        }
+      }
+    }
+
+    if (!is.null(physeq@sam_data)) {
+      if (sum(!rownames(physeq@sam_data) %in% sample_names(physeq)) > 0) {
+        rownames(physeq@sam_data) <- sample_names(physeq)
+        if (!silent) {
+          message("Change the samples names in sam_data slot")
+        }
+      }
+    }
+  }
+
+  if (sum(grepl("^0", "", sample_names(physeq)) > 0) && !silent) {
+    message("At least one sample name start with a zero.
+    That can be a problem for some phyloseq functions such as 
+    plot_bar and psmelt.")
+  }
+
+  new_physeq <- physeq
+
+  if (remove_empty_taxa) {
+    if (sum(taxa_sums(new_physeq) == 0) > 0) {
+      new_physeq <- subset_taxa(physeq, taxa_sums(physeq) > 0)
+    }
+  }
+  if (remove_empty_samples) {
+    if (sum(sample_sums(new_physeq) == 0) > 0) {
+      new_physeq <- subset_samples(new_physeq, sample_sums(physeq) > 0)
+    }
+  }
+
+  if (verbose) {
+    message(paste(
+      "Supress", ntaxa(physeq) - ntaxa(new_physeq), "taxa (",
+      names(taxa_sums(physeq) > 0), ") and",
+      nsamples(physeq) - nsamples(new_physeq),
+      "sample(s) (", names(sample_sums(physeq) > 0), ")."
+    ))
+  } else if (!silent) {
+    message(paste(
+      "Supress", ntaxa(physeq) - ntaxa(new_physeq), "taxa and",
+      nsamples(physeq) - nsamples(new_physeq),
+      "samples."
+    ))
+  }
+
+  return(new_physeq)
+}
+```
+
+```{r importation}
+# tax-eco table 
+## only ECM and saprotrophs
+taxeco <- read.table("tax_table.txt",header=T,sep="\t") # change #N/A in excel in NA
+length(taxeco)
+taxeco[,c(3:10)] <- lapply(taxeco[,c(3:10)], as.factor) 
+rownames(taxeco) <- taxeco$Cluster_ID
+
+# otu table
+otu <- read.table("otu_table.txt",header=F,sep="\t",na.strings = T) 
+otu = setNames(data.frame(t(otu[,-1])), otu[,1]) # transpose + 1st column (ie samples set as header
+## samples = columns, otu abundance = rows
+colnames(otu)[1] <- "Cluster_ID" # after transposing, resolving pb with headers
+nrow(otu)
+otu <- otu[-4051,] # suppressing the NA row
+
+# sample data
+sam <- read.table("sample_table.txt",header=T,sep="\t",na.strings = T) 
+sam[sam==""] <- NA # filling the blanck by NAs
+length(sam)
+
+# subset guilds (saprotroph - ectomycorrizal)
+ecm <- subset(taxeco,taxeco$primary_lifestyle=="ectomycorrhizal") %>% arrange(desc(Cluster_Size))
+sapr <- subset(taxeco,taxeco$primary_lifestyle!="ectomycorrhizal")
+```
+
+```{r supress OTU non ecto/no sapro}
+otu_filtered <- merge(otu, taxeco, by = "Cluster_ID") # using taxeco (already filtered by ecm and sapr) to filter otu from other guilds
+## maybe should i used join functions?
+
+sam_filtered <- sam[sam$sample_order %in% colnames(otu_filtered),] # keep the rows (ie samples) that appear in others tables
+
+rownames(otu_filtered) <- otu_filtered[,1] 
+which(colnames(otu_filtered)=="PCR_neg_2") # merge 2 dataframe, but we just want to keep otu (with the good rows)
+otu_filtered2 <- subset(otu_filtered[c(1:513),c(2:162),])
+taxeco2 <- subset(taxeco[,c(3:length(taxeco)),]) 
+```
+
+```{r trasnforming df into matrixes}
+# useful functions
+## str() 
+## class()
+## dplyr::join()
+
+# transforming dataframes into matrixes for phyloseq functions (otu,tax)
+otu_filtered3 <- matrix(as.numeric(unlist(otu_filtered2)), 
+                        ncol = ncol(otu_filtered2),
+                        nrow = nrow(otu_filtered2))
+taxeco3 <- matrix(as.character(unlist(taxeco2)), 
+                        ncol = ncol(taxeco2),
+                        nrow = nrow(taxeco2))
+
+# attributing rownanmes after being deleted from matrix transformation
+rownames(otu_filtered3) <- rownames(otu_filtered2)
+colnames(otu_filtered3) <- colnames(otu_filtered2)
+rownames(taxeco3) <- rownames(taxeco2)
+colnames(taxeco3) <- colnames(taxeco2)
+```
+
+```{r otu <1% suppresion}
+# transforming abundance matrix to relative
+otu_relative <- prop.table(otu_filtered3, margin=2) # margin = 2 -> column sum and relative abundances
+
+# verification
+## rowsum
+verif_sum <- colSums(otu_relative) %>% summary() %>% print() # ok if 1 and some NAs
+
+## for 3 - c10 c100
+### total read sample3 =744 
+relat_3c10 <- (19/744) %>% print()
+relat_3c100 <- (25/744) %>% print() 
+which(otu_relative==relat_3c10, arr.ind = T)
+which(otu_relative==relat_3c100, arr.ind = T) # good 
+
+# creating a new matrix where <1% reads are deleted 
+otu_sup0.01 <- ifelse(otu_relative>0.01,otu_filtered3,0) 
+```
+
+```{r physeq objects}
+# creating the physeq objects 
+otu_phy <- otu_table(otu_sup0.01, taxa_are_rows = TRUE)
+taxeco_phy <- tax_table(taxeco3)
+sam_phy <- sample_data(sam_filtered)
+
+# general physeq object
+physeq <- phyloseq(otu_phy,taxeco_phy,sam_phy) 
+sample_names(physeq) # missing the controls and negatives
+```
+
+```{r physeq susbsets}
+# subsetting based on sites and guilds 
+ecm_phy <- subset_taxa(physeq, primary_lifestyle=="ectomycorrhizal") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
+sapr_phy <- subset_taxa(physeq, primary_lifestyle!="ectomycorrhizal") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
+
+fanga <- subset_samples(physeq, physeq@sam_data$site=="Fangamon") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
+hala <- subset_samples(physeq, physeq@sam_data$site=="Halasen") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
+hala5 <- subset_samples(physeq, physeq@sam_data$site=="Halasen_p_5") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
+  
+ecm_fanga <- subset_samples(ecm_phy, physeq@sam_data$site=="Fangamon") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
+ecm_hala <- subset_samples(ecm_phy, physeq@sam_data$site=="Halasen") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
+ecm_hala5 <- subset_samples(ecm_phy, physeq@sam_data$site=="Halasen_p_5") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
+
+sapr_fanga <- subset_samples(sapr_phy, physeq@sam_data$site=="Fangamon") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
+sapr_hala <- subset_samples(sapr_phy, physeq@sam_data$site=="Halasen") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
+sapr_hala5 <- subset_samples(sapr_phy, physeq@sam_data$site=="Halasen_p_5") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
+
+# abundance -> boolean
+ecm_fanga_pa <- as_binary_otu_table(ecm_fanga) %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
+ecm_hala_pa <- as_binary_otu_table(ecm_hala) %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T) 
+ecm_hala5_pa <- as_binary_otu_table(ecm_hala5) %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
+
+sapr_fanga_pa <- as_binary_otu_table(sapr_fanga) %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
+sapr_hala_pa <- as_binary_otu_table(sapr_hala) %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
+sapr_hala5_pa <- as_binary_otu_table(sapr_hala5) %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
+```
+
+```{r transfo variables}
+fanga_sam <- lapply(fanga@sam_data, as.factor) %>% as.data.frame()
+hala_sam <- lapply(hala@sam_data, as.factor) %>% as.data.frame()
+hala5_sam <- lapply(hala5@sam_data, as.factor) %>% as.data.frame()
+```
+

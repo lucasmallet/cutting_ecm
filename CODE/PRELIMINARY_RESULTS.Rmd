@@ -1,0 +1,86 @@
+---
+title: "PRELIMINARY_RESULTS"
+output: html_document
+date: "2023-03-08"
+---
+# HALASEN STUDY: edge retention trees
+```{r overview }
+# sampling design
+colnames(hala_sam)
+summary(hala_sam[,c(2,5:8)])
+table(hala_sam$plot,hala_sam$treatment)
+
+# nb genus
+colnames(ecm_hala@tax_table)
+as.factor(ecm_hala@tax_table[,5]) %>% droplevels() %>% levels() # 36 genus
+# attribution facolors, or whatever to have proper constrasted colors on graphicals representations
+```
+# FANGAMON STUDY: randomly distributed retention trees
+```{r overview }
+colnames(fanga_sam)
+summary(fanga_sam[,c(2,5:8)])
+summary(fanga_sam$plot)
+table(fanga_sam$plot,fanga_sam$treatment)
+
+# nb genus
+colnames(ecm_fanga@tax_table)
+as.factor(ecm_fanga@tax_table[,5]) %>% droplevels() %>% levels() # 27 genus
+```
+# HALA5 STUDY: randomly distributed retention trees
+```{r overview }
+colnames(hala5_sam)
+summary(hala5_sam[,c(2,5:8)])
+summary(hala5_sam$plot)
+table(hala5_sam$plot,hala5_sam$treatment)
+
+# nb genus
+colnames(ecm_hala5@tax_table)
+as.factor(ecm_hala5@tax_table[,5]) %>% droplevels() %>% levels() # 32 genus
+```
+
+# plotting tests
+```{r plotting try}
+
+plot_bar(physeq, x="Class")
+plot_bar(physeq, x="Fruitbody_type_template")
+plot_bar(physeq, x="site", fill="Class")
+plot_bar(fanga, x="treatment", fill="Class")
+plot_bar(hala, x="treatment", fill="Class")
+plot_bar(ecm_phy, x="site", fill="Class")
+
+plot_bar(ecm_hala, x="treatment", fill="Genus")
+plot_bar(sapr_hala, x="treatment", fill="Genus")
+
+plot_bar(ecm_hala_pa, x="treatment", fill="Genus")+
+  geom_bar(stat="identity",  position = "stack",width=0.9)
+
+nmds <- ordinate(
+  physeq = physeq, 
+  method = "NMDS", 
+  distance = "bray")
+
+phyloseq::plot_ordination(physeq, color = "Site") + 
+    geom_point() 
+
+ecm_ordinate<- ordinate(as_binary_otu_table(ecm), method = "MDS", dist="jaccard")
+plot_ordination(ecm, ecm_ordinate, type="samples", color="Type_sol")
+
+sol_bar <- phyloseq::plot_bar(as_binary_otu_table(sol), x = "Type_sol") 
+sol_bar$data$couleur_remplissage <- fac2col(sol_bar$data$Genus)
+ggplot(sol_bar$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=Type_sol, y = Abundance))+
+  geom_bar(stat="identity", position = "fill") +
+  scale_fill_manual(values = funky(22)) +
+  labs(title="Distribution des genres par dilutions de CHENAIE en sol urbain (rarefied)", subtitle="Echantillons de SOL")
+
+ecm_hala_ggplot1 <- phyloseq::plot_bar(as_binary_otu_table(ecm_hala), x = "treatment") 
+
+ecm_hala_ggplot1 <- phyloseq::plot_bar(as_binary_otu_table(ecm_hala), x = "treatment") 
+ggplot(ecm_hala_ggplot1$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment, y = Abundance))+
+  geom_bar(stat="identity", position = "stack") +
+  labs(title="", subtitle="")  
+
+
+# position = fill -> relative abundance 
+```
+
+
