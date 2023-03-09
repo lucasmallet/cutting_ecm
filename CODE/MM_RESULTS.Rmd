@@ -59,6 +59,7 @@ run_data[2,2]-run_data[2,3] # sequences deleted
 ## no IDed sequences
 is.na(raw_clust[,4]) %>% summary() # 1145 clusters ID / 4050 
 pourc_id <- 1145/4050*100; pourc_id # autoID (especially the most abundant clusters)
+# ID for 1000s first TODO
 
 ## NF sequences
 grep("PLANT|NF", raw_clust[,4], value = TRUE) %>% length() # 82 non-fungi clusters IDed 
@@ -71,7 +72,7 @@ pourc_ecm <- 204/1000*100; pourc_ecm # 20% ECM guild among Fungi
 
 ## nb reads
 run_data[3,2]
-raw_total_read <- sum(raw_clust$Cluster_Size); raw_total_read
+raw_total_read <- sum(raw_f_clust$Cluster_Size); raw_total_read ## TODO: exlcude plants to have proper pourcentages values
 ecm_total_read <-sum(ecm$Cluster_Size); ecm_total_read
 pourc_nb_read_ecm <- ecm_total_read/raw_total_read*100; pourc_nb_read_ecm # pourc nb read conserved/ nb read 
 summary(ecm$Cluster_Size) # min, mean, max of ecm reads

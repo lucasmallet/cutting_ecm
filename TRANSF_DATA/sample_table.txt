@@ -1,179 +1,179 @@
-sample_order	pool	tag_pool	site	year	plot	treatment	specification
-1	1	1_1	KONTROLL_				
-2	1	4_1	Halasen	2012	13	clearcut	middle_lower
-3	1	5_1	Fangamon	2018	2	shelter_burn	
-4	1	6_1	Halasen_p_5	2018	control	control	
-5	1	7_1	Halasen	2018	12	forest	middle_upper
-6	1	8_1	Halasen	2012	6	clearcut	middle_upper
-7	1	9_1	Halasen	2018	13	clearcut	middle_lower
-8	1	10_1	Fangamon	2012	3	shelter_without_burn	
-9	1	11_1	Fangamon	2018	2	shelter_burn	
-10	1	12_1	Halasen_p_5	2018	clearcut	clearcut	
-11	1	13_1	Halasen	2018	3	clearcut	middle_upper
-12	1	14_1	Halasen_p_5	2018	clearcut	clearcut	
-13	1	15_1	Fangamon	2012	3	shelter_without_burn	
-14	1	16_1	Halasen	2012	13	clearcut	edge_south
-15	1	17_1	Halasen	2012	5	forest	middle_upper
-16	1	18_1	Fangamon	2018	5	clearcut	
-17	1	20_1	Fangamon	2012	5	clearcut	
-18	1	21_1	Halasen	2012	12	forest	middle_lower
-19	1	22_1	Fangamon	2018	new_control	forest_control	
-20	1	23_1	Halasen	2018	13	clearcut	edge_north
-21	1	24_1	Halasen	2018	7	forest	middle_lower
-22	1	25_1	Halasen	2012	11	forest	middle_upper
-23	1	26_1	Fangamon	2012	6	forest_control	
-24	1	28_1	Fangamon	2012	6	forest_control	
-25	1	29_1	KONTROLL_				
-26	1	30_1	Halasen_p_5	2018	control	control	
-27	1	31_1	Halasen_p_5	2018	24	p_5	
-28	1	32_1	Fangamon	2018	6	forest_control	
-29	1	33_1	Fangamon	2018	4	forest_control	
-30	1	34_1	Fangamon	2012	1	clearcut	seedling_roots
-31	1	35_1	Halasen	2018	3	clearcut	edge_south
-32	1	36_1	Halasen	2018	11	forest	middle_lower
-33	1	37_1	Halasen	2018	5	forest	middle_lower
-34	1	38_1	Halasen	2012	8	forest	middle_upper
-35	1	39_1	Fangamon	2018	5	clearcut	
-36	1	41_1	Halasen	2012	10	clearcut	middle_upper
-37	1	42_1	Fangamon	2012	12	forest_control	
-38	1	44_1	Halasen	2012	6	clearcut	kant_norra
-39	1	45_1	Fangamon	2018	6	forest_control	
-40	1	97_1	Halasen	2018	6	clearcut	edge_north
-41	1	47_1	Fangamon	2018	1	clearcut	
-42	1	48_1	Fangamon	2012	1	clearcut	
-43	1	49_1	Fangamon	2012	5	clearcut	
-44	1	51_1	Halasen_p_5	2018	8	p_5	
-45	1	52_1	Fangamon	2012	5	clearcut	seedling_roots
-46	1	53_1	Halasen	2012	10	clearcut	edge_north
-47	1	54_1	Fangamon	2018	2	shelter_burn	
-48	1	55_1	Halasen_p_5	2018	control	control	
-49	1	56_1	KONTROLL_				
-50	1	57_1	Fangamon	2012	3	shelter_without_burn	
-51	1	58_1	Halasen	2012	7	forest	middle_upper
-52	1	60_1	Fangamon	2018	3	shelter_without_burn	
-53	1	61_1	Halasen_p_5	2018	clearcut	clearcut	
-54	1	63_1	Halasen	2012	11	forest	middle_lower
-55	1	65_1	Fangamon	2012	1	clearcut	seedling_roots
-56	1	66_1	Fangamon	2018	4	forest_control	
-57	1	67_1	Halasen_p_5	2018	22	p_5	
-58	1	68_1	Halasen	2018	13	clearcut	middle_upper
-59	1	69_1	Halasen	2012	12	forest	middle_upper
-60	1	70_1	Fangamon	2012	7	clearcut	
-61	1	71_1	Fangamon	2012	2	shelter_burn	
-62	1	72_1	Halasen_p_5	2018	12	p_5	
-63	1	73_1	Halasen	2018	10	clearcut	edge_north
-64	1	74_1	Fangamon	2012	12	forest_control	
-65	1	98_1	Fangamon	2018	1	clearcut	
-66	1	76_1	Halasen	2012	5	forest	middle_lower
-67	1	77_1	Halasen	2012	4	forest	middle_upper
-68	1	78_1	Fangamon	2012	10	shelter_without_burn	
-69	1	79_1	Fangamon	2018	5	clearcut	
-70	1	80_1	Halasen_p_5	2018	4	p_5	
-71	1	81_1	Halasen_p_5	2018	10	p_5	
-72	1	99_1	Halasen	2018	3	clearcut	middle_lower
-73	1	83_1	KONTROLL_				
-74	1	84_1	Fangamon	2012	1	clearcut	
-75	1	85_1	Fangamon	2018	3	shelter_without_burn	
-76	1	86_1	Halasen_p_5	2018	2	p_5	
-77	1	87_1	Halasen	2012	4	forest	middle_lower
-78	1	88_1	Halasen	2012	13	clearcut	middle_upper
-79	1	89_1	Fangamon	2012	4	forest_control	
-80	1	90_1	Halasen_p_5	2018	control	control	
-81	1	91_1	Halasen	2018	10	clearcut	middle_upper
-82	1	92_1	Halasen	2018	8	forest	middle_lower
-83	1	93_1	Fangamon	2018	7	clearcut	
-84	2	1_2	Fangamon	2018	11	shelter_burn	
-85	2	4_2	Fangamon	2012	8	shelter_without_burn	
-86	2	5_2	Fangamon	2018	1	clearcut	
-87	2	6_2	Fangamon	2012	6	forest_control	
-88	2	7_2	Fangamon	2012	2	shelter_burn	
-89	2	8_2	Halasen	2012	3	clearcut	middle_upper
-90	2	9_2	Halasen_p_5	2018	control	control	
-91	2	10_2	Fangamon	2018	11	shelter_burn	
-92	2	11_2	Halasen_p_5	2018	16	p_5	
-93	2	12_2	Halasen	2018	7	forest	middle_upper
-94	2	13_2	Halasen_p_5	2018	control	control	
-95	2	14_2	Halasen	2012	9	forest	midle
-96	2	15_2	Fangamon	2012	9	shelter_burn	
-97	2	16_2	KONTROLL_				
-98	2	17_2	Fangamon	2012	7	clearcut	seedling_roots
-99	2	18_2	Halasen	2012	8	forest	middle_lower
-100	2	20_2	Fangamon	2012	10	shelter_without_burn	
-101	2	21_2	Halasen_p_5	2018	clearcut	clearcut	
-102	2	22_2	Halasen	2018	4	forest	middle_lower
-103	2	23_2	Fangamon	2018	7	clearcut	
-104	2	24_2	Fangamon	2012	8	shelter_without_burn	
-105	2	25_2	Fangamon	2018	11	shelter_burn	
-106	2	26_2	Halasen	2012	2	forest	middle_upper
-107	2	28_2	Halasen_p_5	2018	26	p_5	
-108	2	29_2	Halasen	2018	3	clearcut	edge_north
-109	2	30_2	Fangamon	2012	2	shelter_burn	
-110	2	31_2	Halasen	2012	10	clearcut	edge_south
-111	2	32_2	Halasen_p_5	2018	18	p_5	
-112	2	33_2	Halasen	2018	2	forest	middle_lower
-113	2	34_2	Halasen	2012	6	clearcut	middle_lower
-114	2	35_2	Fangamon	2012	7	clearcut	
-115	2	36_2	Fangamon	2018	6	forest_control	
-116	2	37_2	Halasen_p_5	2018	clearcut	clearcut	
-117	2	38_2	Halasen	2012	3	clearcut	edge_north
-118	2	39_2	Fangamon	2018	new_control	forest_control	
-119	2	41_2	Halasen	2018	2	forest	middle_upper
-120	2	42_2	Halasen	2018	12	forest	middle_lower
-121	2	44_2	KONTROLL_				
-122	2	45_2	Fangamon	2012	11	shelter_burn	
-123	2	97_2	Halasen	2012	3	clearcut	edge_south
-124	2	47_2	Fangamon	2012	12	forest_control	
-125	2	48_2	Halasen_p_5	2018	20	p_5	
-126	2	49_2	Halasen	2018	11	forest	middle_upper
-127	2	51_2	Halasen_p_5	2018	control	control	
-128	2	52_2	Fangamon	2012	5	clearcut	
-129	2	53_2	Halasen_p_5	2018	control	control	
-130	2	54_2	Fangamon	2018	7	clearcut	
-131	2	55_2	Fangamon	2012	4	forest_control	
-132	2	56_2	Halasen	2012	7	forest	middle_lower
-133	2	57_2	Halasen_p_5	2018	6	p_5	
-134	2	58_2	Fangamon	2012	7	clearcut	
-135	2	60_2	Fangamon	2012	9	shelter_burn	
-136	2	61_2	Fangamon	2018	4	forest_control	
-137	2	63_2	Fangamon	2018	new_control	forest_control	
-138	2	65_2	Halasen_p_5	2018	control	control	
-139	2	66_2	Halasen	2018	13	clearcut	edge_south
-140	2	67_2	Fangamon	2012	5	clearcut	seedling_roots
-141	2	68_2	Halasen_p_5	2018	control	control	
-142	2	69_2	Halasen	2012	13	clearcut	edge_north
-143	2	70_2	Halasen	2018	6	clearcut	middle_lower
-144	2	71_2	Halasen	2012	10	clearcut	middle_lower
-145	2	72_2	KONTROLL_				
-146	2	73_2	Halasen	2018	10	clearcut	edge_south
-147	2	74_2	Halasen	2018	6	clearcut	edge_south
-148	2	98_2	Halasen	2018	4	forest	middle_upper
-149	2	76_2	Halasen_p_5	2018	control	control	
-150	2	77_2	Halasen	2018	5	forest	middle_upper
-151	2	78_2	Fangamon	2012	11	shelter_burn	
-152	2	79_2	Fangamon	2012	7	clearcut	seedling_roots
-153	2	80_2	Halasen	2018	9	forest	middle
-154	2	81_2	Halasen_p_5	2018	control	control	
-155	2	99_2	Fangamon	2012	8	shelter_without_burn	
-156	2	83_2	Halasen	2018	10	clearcut	middle_lower
-157	2	84_2	Fangamon	2012	11	shelter_burn	
-158	2	85_2	Fangamon	2012	10	shelter_without_burn	
-159	2	86_2	Fangamon	2012	9	shelter_burn	
-160	2	87_2	Fangamon	2012	1	clearcut	
-161	2	88_2	Halasen	2012	6	clearcut	edge_south
-162	2	89_2	Halasen	2018	6	clearcut	middle_upper
-163	2	90_2	Fangamon	2018	3	shelter_without_burn	
-164	2	91_2	Halasen	2012	3	clearcut	middle_lower
-165	2	92_2	Fangamon	2012	4	forest_control	
-166	2	93_2	Halasen	2018	8	forest	middle_upper
-?	2	95_2					
-?	2	96_2					
-ITS-standard1	1	40_1					
-ITS-standard2	2	40_2					
-PCR_neg_1	1	50_1					
-PCR_neg_10	1	95_1					
-PCR_neg_2	1	94_1					
-PCR_neg_3	2	50_2					
-PCR_neg_4	2	94_2					
-PCR_neg_5	2	100_2					
-PCR_neg_6	1	100_1					
-PCR_neg_7	1	96_1					
+sample_order	tag_pool	site	year	plot	treatment	specification
+s1	1_1	control				
+s2	4_1	Halasen	2012	13	clearcut	middle_lower
+s3	5_1	Fangamon	2018	2	shelter_burn	
+s4	6_1	Halasen_p_5	2018	control	control	
+s5	7_1	Halasen	2018	12	forest	middle_upper
+s6	8_1	Halasen	2012	6	clearcut	middle_upper
+s7	9_1	Halasen	2018	13	clearcut	middle_lower
+s8	10_1	Fangamon	2012	3	shelter_without_burn	
+s9	11_1	Fangamon	2018	2	shelter_burn	
+s10	12_1	Halasen_p_5	2018	clearcut	clearcut	
+s11	13_1	Halasen	2018	3	clearcut	middle_upper
+s12	14_1	Halasen_p_5	2018	clearcut	clearcut	
+s13	15_1	Fangamon	2012	3	shelter_without_burn	
+s14	16_1	Halasen	2012	13	clearcut	edge_south
+s15	17_1	Halasen	2012	5	forest	middle_upper
+s16	18_1	Fangamon	2018	5	clearcut	
+s17	20_1	Fangamon	2012	5	clearcut	
+s18	21_1	Halasen	2012	12	forest	middle_lower
+s19	22_1	Fangamon	2018	new_control	forest_control	
+s20	23_1	Halasen	2018	13	clearcut	edge_north
+s21	24_1	Halasen	2018	7	forest	middle_lower
+s22	25_1	Halasen	2012	11	forest	middle_upper
+s23	26_1	Fangamon	2012	6	forest_control	
+s24	28_1	Fangamon	2012	6	forest_control	
+s25	29_1	control				
+s26	30_1	Halasen_p_5	2018	control	control	
+s27	31_1	Halasen_p_5	2018	24	p_5	
+s28	32_1	Fangamon	2018	6	forest_control	
+s29	33_1	Fangamon	2018	4	forest_control	
+s30	34_1	Fangamon	2012	1	clearcut	seedling_roots
+s31	35_1	Halasen	2018	3	clearcut	edge_south
+s32	36_1	Halasen	2018	11	forest	middle_lower
+s33	37_1	Halasen	2018	5	forest	middle_lower
+s34	38_1	Halasen	2012	8	forest	middle_upper
+s35	39_1	Fangamon	2018	5	clearcut	
+s36	41_1	Halasen	2012	10	clearcut	middle_upper
+s37	42_1	Fangamon	2012	12	forest_control	
+s38	44_1	Halasen	2012	6	clearcut	kant_norra
+s39	45_1	Fangamon	2018	6	forest_control	
+s40	97_1	Halasen	2018	6	clearcut	edge_north
+s41	47_1	Fangamon	2018	1	clearcut	
+s42	48_1	Fangamon	2012	1	clearcut	
+s43	49_1	Fangamon	2012	5	clearcut	
+s44	51_1	Halasen_p_5	2018	8	p_5	
+s45	52_1	Fangamon	2012	5	clearcut	seedling_roots
+s46	53_1	Halasen	2012	10	clearcut	edge_north
+s47	54_1	Fangamon	2018	2	shelter_burn	
+s48	55_1	Halasen_p_5	2018	control	control	
+s49	56_1	control				
+s50	57_1	Fangamon	2012	3	shelter_without_burn	
+s51	58_1	Halasen	2012	7	forest	middle_upper
+s52	60_1	Fangamon	2018	3	shelter_without_burn	
+s53	61_1	Halasen_p_5	2018	clearcut	clearcut	
+s54	63_1	Halasen	2012	11	forest	middle_lower
+s55	65_1	Fangamon	2012	1	clearcut	seedling_roots
+s56	66_1	Fangamon	2018	4	forest_control	
+s57	67_1	Halasen_p_5	2018	22	p_5	
+s58	68_1	Halasen	2018	13	clearcut	middle_upper
+s59	69_1	Halasen	2012	12	forest	middle_upper
+s60	70_1	Fangamon	2012	7	clearcut	
+s61	71_1	Fangamon	2012	2	shelter_burn	
+s62	72_1	Halasen_p_5	2018	12	p_5	
+s63	73_1	Halasen	2018	10	clearcut	edge_north
+s64	74_1	Fangamon	2012	12	forest_control	
+s65	98_1	Fangamon	2018	1	clearcut	
+s66	76_1	Halasen	2012	5	forest	middle_lower
+s67	77_1	Halasen	2012	4	forest	middle_upper
+s68	78_1	Fangamon	2012	10	shelter_without_burn	
+s69	79_1	Fangamon	2018	5	clearcut	
+s70	80_1	Halasen_p_5	2018	4	p_5	
+s71	81_1	Halasen_p_5	2018	10	p_5	
+s72	99_1	Halasen	2018	3	clearcut	middle_lower
+s73	83_1	control				
+s74	84_1	Fangamon	2012	1	clearcut	
+s75	85_1	Fangamon	2018	3	shelter_without_burn	
+s76	86_1	Halasen_p_5	2018	2	p_5	
+s77	87_1	Halasen	2012	4	forest	middle_lower
+s78	88_1	Halasen	2012	13	clearcut	middle_upper
+s79	89_1	Fangamon	2012	4	forest_control	
+s80	90_1	Halasen_p_5	2018	control	control	
+s81	91_1	Halasen	2018	10	clearcut	middle_upper
+s82	92_1	Halasen	2018	8	forest	middle_lower
+s83	93_1	Fangamon	2018	7	clearcut	
+s84	1_2	Fangamon	2018	11	shelter_burn	
+s85	4_2	Fangamon	2012	8	shelter_without_burn	
+s86	5_2	Fangamon	2018	1	clearcut	
+s87	6_2	Fangamon	2012	6	forest_control	
+s88	7_2	Fangamon	2012	2	shelter_burn	
+s89	8_2	Halasen	2012	3	clearcut	middle_upper
+s90	9_2	Halasen_p_5	2018	control	control	
+s91	10_2	Fangamon	2018	11	shelter_burn	
+s92	11_2	Halasen_p_5	2018	16	p_5	
+s93	12_2	Halasen	2018	7	forest	middle_upper
+s94	13_2	Halasen_p_5	2018	control	control	
+s95	14_2	Halasen	2012	9	forest	midle
+s96	15_2	Fangamon	2012	9	shelter_burn	
+s97	16_2	control				
+s98	17_2	Fangamon	2012	7	clearcut	seedling_roots
+s99	18_2	Halasen	2012	8	forest	middle_lower
+s100	20_2	Fangamon	2012	10	shelter_without_burn	
+s101	21_2	Halasen_p_5	2018	clearcut	clearcut	
+s102	22_2	Halasen	2018	4	forest	middle_lower
+s103	23_2	Fangamon	2018	7	clearcut	
+s104	24_2	Fangamon	2012	8	shelter_without_burn	
+s105	25_2	Fangamon	2018	11	shelter_burn	
+s106	26_2	Halasen	2012	2	forest	middle_upper
+s107	28_2	Halasen_p_5	2018	26	p_5	
+s108	29_2	Halasen	2018	3	clearcut	edge_north
+s109	30_2	Fangamon	2012	2	shelter_burn	
+s110	31_2	Halasen	2012	10	clearcut	edge_south
+s111	32_2	Halasen_p_5	2018	18	p_5	
+s112	33_2	Halasen	2018	2	forest	middle_lower
+s113	34_2	Halasen	2012	6	clearcut	middle_lower
+s114	35_2	Fangamon	2012	7	clearcut	
+s115	36_2	Fangamon	2018	6	forest_control	
+s116	37_2	Halasen_p_5	2018	clearcut	clearcut	
+s117	38_2	Halasen	2012	3	clearcut	edge_north
+s118	39_2	Fangamon	2018	new_control	forest_control	
+s119	41_2	Halasen	2018	2	forest	middle_upper
+s120	42_2	Halasen	2018	12	forest	middle_lower
+s121	44_2	control				
+s122	45_2	Fangamon	2012	11	shelter_burn	
+s123	97_2	Halasen	2012	3	clearcut	edge_south
+s124	47_2	Fangamon	2012	12	forest_control	
+s125	48_2	Halasen_p_5	2018	20	p_5	
+s126	49_2	Halasen	2018	11	forest	middle_upper
+s127	51_2	Halasen_p_5	2018	control	control	
+s128	52_2	Fangamon	2012	5	clearcut	
+s129	53_2	Halasen_p_5	2018	control	control	
+s130	54_2	Fangamon	2018	7	clearcut	
+s131	55_2	Fangamon	2012	4	forest_control	
+s132	56_2	Halasen	2012	7	forest	middle_lower
+s133	57_2	Halasen_p_5	2018	6	p_5	
+s134	58_2	Fangamon	2012	7	clearcut	
+s135	60_2	Fangamon	2012	9	shelter_burn	
+s136	61_2	Fangamon	2018	4	forest_control	
+s137	63_2	Fangamon	2018	new_control	forest_control	
+s138	65_2	Halasen_p_5	2018	control	control	
+s139	66_2	Halasen	2018	13	clearcut	edge_south
+s140	67_2	Fangamon	2012	5	clearcut	seedling_roots
+s141	68_2	Halasen_p_5	2018	control	control	
+s142	69_2	Halasen	2012	13	clearcut	edge_north
+s143	70_2	Halasen	2018	6	clearcut	middle_lower
+s144	71_2	Halasen	2012	10	clearcut	middle_lower
+s145	72_2	control				
+s146	73_2	Halasen	2018	10	clearcut	edge_south
+s147	74_2	Halasen	2018	6	clearcut	edge_south
+s148	98_2	Halasen	2018	4	forest	middle_upper
+s149	76_2	Halasen_p_5	2018	control	control	
+s150	77_2	Halasen	2018	5	forest	middle_upper
+s151	78_2	Fangamon	2012	11	shelter_burn	
+s152	79_2	Fangamon	2012	7	clearcut	seedling_roots
+s153	80_2	Halasen	2018	9	forest	middle
+s154	81_2	Halasen_p_5	2018	control	control	
+s155	99_2	Fangamon	2012	8	shelter_without_burn	
+s156	83_2	Halasen	2018	10	clearcut	middle_lower
+s157	84_2	Fangamon	2012	11	shelter_burn	
+s158	85_2	Fangamon	2012	10	shelter_without_burn	
+s159	86_2	Fangamon	2012	9	shelter_burn	
+s160	87_2	Fangamon	2012	1	clearcut	
+s161	88_2	Halasen	2012	6	clearcut	edge_south
+s162	89_2	Halasen	2018	6	clearcut	middle_upper
+s163	90_2	Fangamon	2018	3	shelter_without_burn	
+s164	91_2	Halasen	2012	3	clearcut	middle_lower
+s165	92_2	Fangamon	2012	4	forest_control	
+s166	93_2	Halasen	2018	8	forest	middle_upper
+sQ1	95_2					
+sQ2	96_2					
+sITS_standard1	40_1					
+sITS_standard2	40_2					
+sPCR_neg_1	50_1					
+sPCR_neg_10	95_1					
+sPCR_neg_2	94_1					
+sPCR_neg_3	50_2					
+sPCR_neg_4	94_2					
+sPCR_neg_5	100_2					
+sPCR_neg_6	100_1					
+sPCR_neg_7	96_1					

@@ -105,12 +105,11 @@ taxeco[,c(3:10)] <- lapply(taxeco[,c(3:10)], as.factor)
 rownames(taxeco) <- taxeco$Cluster_ID
 
 # otu table
-otu <- read.table("otu_table.txt",header=F,sep="\t",na.strings = T) 
+otu <- read.table("otu_table_redo.txt",header=F,sep="\t",na.strings = T) 
 otu = setNames(data.frame(t(otu[,-1])), otu[,1]) # transpose + 1st column (ie samples set as header
 ## samples = columns, otu abundance = rows
 colnames(otu)[1] <- "Cluster_ID" # after transposing, resolving pb with headers
 nrow(otu)
-otu <- otu[-4051,] # suppressing the NA row
 
 # sample data
 sam <- read.table("sample_table.txt",header=T,sep="\t",na.strings = T) 
@@ -123,13 +122,16 @@ sapr <- subset(taxeco,taxeco$primary_lifestyle!="ectomycorrhizal")
 ```
 
 ```{r supress OTU non ecto/no sapro}
-otu_filtered <- merge(otu, taxeco, by = "Cluster_ID") # using taxeco (already filtered by ecm and sapr) to filter otu from other guilds
-## maybe should i used join functions?
+otu_filtered <- merge(otu, taxeco, by = "Cluster_ID",sort=T) # using taxeco (already filtered by ecm and sapr) to filter otu from other guilds
+
+# semi_join(otu, taxeco, by = "Cluster_ID") # not working because not similar df
+
 
 sam_filtered <- sam[sam$sample_order %in% colnames(otu_filtered),] # keep the rows (ie samples) that appear in others tables
+rownames(sam_filtered) <- sam_filtered[,1]
 
 rownames(otu_filtered) <- otu_filtered[,1] 
-which(colnames(otu_filtered)=="PCR_neg_2") # merge 2 dataframe, but we just want to keep otu (with the good rows)
+which(colnames(otu_filtered)=="sPCR_neg_2") # merge 2 dataframe, but we just want to keep otu (with the good rows)
 otu_filtered2 <- subset(otu_filtered[c(1:513),c(2:162),])
 taxeco2 <- subset(taxeco[,c(3:length(taxeco)),]) 
 ```
@@ -187,20 +189,20 @@ sample_names(physeq) # missing the controls and negatives
 
 ```{r physeq susbsets}
 # subsetting based on sites and guilds 
-ecm_phy <- subset_taxa(physeq, primary_lifestyle=="ectomycorrhizal") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
-sapr_phy <- subset_taxa(physeq, primary_lifestyle!="ectomycorrhizal") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
+ecm_phy <- subset_taxa(physeq, primary_lifestyle=="ectomycorrhizal") 
+sapr_phy <- subset_taxa(physeq, primary_lifestyle!="ectomycorrhizal")
 
 fanga <- subset_samples(physeq, physeq@sam_data$site=="Fangamon") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
 hala <- subset_samples(physeq, physeq@sam_data$site=="Halasen") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
 hala5 <- subset_samples(physeq, physeq@sam_data$site=="Halasen_p_5") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
   
-ecm_fanga <- subset_samples(ecm_phy, physeq@sam_data$site=="Fangamon") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
-ecm_hala <- subset_samples(ecm_phy, physeq@sam_data$site=="Halasen") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
-ecm_hala5 <- subset_samples(ecm_phy, physeq@sam_data$site=="Halasen_p_5") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
+ecm_fanga <- subset_samples(ecm_phy, ecm_phy@sam_data$site=="Fangamon") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
+ecm_hala <- subset_samples(ecm_phy, ecm_phy@sam_data$site=="Halasen") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
+ecm_hala5 <- subset_samples(ecm_phy, ecm_phy@sam_data$site=="Halasen_p_5") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
 
-sapr_fanga <- subset_samples(sapr_phy, physeq@sam_data$site=="Fangamon") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
-sapr_hala <- subset_samples(sapr_phy, physeq@sam_data$site=="Halasen") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
-sapr_hala5 <- subset_samples(sapr_phy, physeq@sam_data$site=="Halasen_p_5") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
+sapr_fanga <- subset_samples(sapr_phy, sapr_phy@sam_data$site=="Fangamon") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
+sapr_hala <- subset_samples(sapr_phy, sapr_phy@sam_data$site=="Halasen") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
+sapr_hala5 <- subset_samples(sapr_phy, sapr_phy@sam_data$site=="Halasen_p_5") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
 
 # abundance -> boolean
 ecm_fanga_pa <- as_binary_otu_table(ecm_fanga) %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
@@ -217,4 +219,9 @@ fanga_sam <- lapply(fanga@sam_data, as.factor) %>% as.data.frame()
 hala_sam <- lapply(hala@sam_data, as.factor) %>% as.data.frame()
 hala5_sam <- lapply(hala5@sam_data, as.factor) %>% as.data.frame()
 ```
+
+
+
+
+
 

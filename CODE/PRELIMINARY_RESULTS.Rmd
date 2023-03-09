@@ -3,29 +3,28 @@ title: "PRELIMINARY_RESULTS"
 output: html_document
 date: "2023-03-08"
 ---
-# HALASEN STUDY: edge retention trees
-```{r overview }
-# sampling design
-colnames(hala_sam)
-summary(hala_sam[,c(2,5:8)])
-table(hala_sam$plot,hala_sam$treatment)
+```{r color palette}
+library(RColorBrewer)
+n <- 60
+qual_col_pals = brewer.pal.info[brewer.pal.info$category == 'qual',]
 
-# nb genus
-colnames(ecm_hala@tax_table)
-as.factor(ecm_hala@tax_table[,5]) %>% droplevels() %>% levels() # 36 genus
-# attribution facolors, or whatever to have proper constrasted colors on graphicals representations
-```
-# FANGAMON STUDY: randomly distributed retention trees
-```{r overview }
-colnames(fanga_sam)
-summary(fanga_sam[,c(2,5:8)])
-summary(fanga_sam$plot)
-table(fanga_sam$plot,fanga_sam$treatment)
+col_vector = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
+pie60 <- pie(rep(1,60), col=sample(col_vector, 60))
+pie29 <- pie(rep(1,29), col=sample(col_vector, 29))
 
-# nb genus
-colnames(ecm_fanga@tax_table)
-as.factor(ecm_fanga@tax_table[,5]) %>% droplevels() %>% levels() # 27 genus
+funky <- colorRampPalette(c("#A6CEE3","#1F78B4","#B2DF8A",
+                            "#33A02C","#FB9A99","#E31A1C",
+                            "#FDBF6F","#FF7F00","#CAB2D6",
+                            "#6A3D9A","#FFFF99","#B15928")) ## translate a factor into colors of a palette ## colors are randomized based on the provided seed
+                            
+#scale_color_brewer(palette = "Dark2")
+
+# Box plot
+## bp+scale_fill_manual(values=wes_palette(n=3, name="GrandBudapest"))
+# Scatter plot
+##sp+scale_color_manual(values=wes_palette(n=3, name="GrandBudapest"))
 ```
+
 # HALA5 STUDY: randomly distributed retention trees
 ```{r overview }
 colnames(hala5_sam)
@@ -35,52 +34,123 @@ table(hala5_sam$plot,hala5_sam$treatment)
 
 # nb genus
 colnames(ecm_hala5@tax_table)
-as.factor(ecm_hala5@tax_table[,5]) %>% droplevels() %>% levels() # 32 genus
+as.factor(ecm_hala5@tax_table[,5]) %>% droplevels() %>% levels() # 22 genus
 ```
 
-# plotting tests
-```{r plotting try}
+=======================================================================================
+-------------------------------------
+# HALASEN STUDY: edge retention trees
+-------------------------------------
+# design and sampling
+```{r overview }
+# sampling design
+colnames(hala_sam)
+summary(hala_sam[,c(2,5:8)])
+table(hala_sam$plot,hala_sam$treatment)
 
-plot_bar(physeq, x="Class")
-plot_bar(physeq, x="Fruitbody_type_template")
-plot_bar(physeq, x="site", fill="Class")
-plot_bar(fanga, x="treatment", fill="Class")
-plot_bar(hala, x="treatment", fill="Class")
-plot_bar(ecm_phy, x="site", fill="Class")
+# nb genus
+colnames(ecm_hala@tax_table)
+as.factor(ecm_hala@tax_table[,5]) %>% droplevels() %>% levels() # 29 genus
+# attribution facolors, or whatever to have proper constrasted colors on graphicals representations
+```
 
-plot_bar(ecm_hala, x="treatment", fill="Genus")
-plot_bar(sapr_hala, x="treatment", fill="Genus")
-
-plot_bar(ecm_hala_pa, x="treatment", fill="Genus")+
-  geom_bar(stat="identity",  position = "stack",width=0.9)
-
-nmds <- ordinate(
-  physeq = physeq, 
-  method = "NMDS", 
-  distance = "bray")
-
-phyloseq::plot_ordination(physeq, color = "Site") + 
-    geom_point() 
-
-ecm_ordinate<- ordinate(as_binary_otu_table(ecm), method = "MDS", dist="jaccard")
-plot_ordination(ecm, ecm_ordinate, type="samples", color="Type_sol")
-
-sol_bar <- phyloseq::plot_bar(as_binary_otu_table(sol), x = "Type_sol") 
-sol_bar$data$couleur_remplissage <- fac2col(sol_bar$data$Genus)
-ggplot(sol_bar$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=Type_sol, y = Abundance))+
-  geom_bar(stat="identity", position = "fill") +
-  scale_fill_manual(values = funky(22)) +
-  labs(title="Distribution des genres par dilutions de CHENAIE en sol urbain (rarefied)", subtitle="Echantillons de SOL")
-
-ecm_hala_ggplot1 <- phyloseq::plot_bar(as_binary_otu_table(ecm_hala), x = "treatment") 
-
+# plotting
+## bivariate analysis
+```{r plotting tests}
 ecm_hala_ggplot1 <- phyloseq::plot_bar(as_binary_otu_table(ecm_hala), x = "treatment") 
 ggplot(ecm_hala_ggplot1$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment, y = Abundance))+
-  geom_bar(stat="identity", position = "stack") +
+  geom_bar(stat="identity", position = "stack", colour="black")) +
+  scale_fill_manual(values = col_vector) +
+  facet_grid(~year, scale="free")+
   labs(title="", subtitle="")  
 
+ecm_hala_ggplot2 <- phyloseq::plot_bar(ecm_hala, x = "treatment") 
+ggplot(ecm_hala_ggplot2$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment, y = Abundance))+
+  geom_bar(stat="identity", position = "stack") +
+  facet_grid(~year, scale="free")+
+  labs(title="", subtitle="")  
 
 # position = fill -> relative abundance 
 ```
 
+## multivariate analysis
+```{r plotting tests}
+ecm_hala_ordi1 <- ordinate(as_binary_otu_table(ecm_hala), method = "MDS", dist="jaccard")
+plot_ordination(ecm_hala, ecm_hala_ordi1, type="samples", color="treatment")
+ecm_hala_ordi2 <- ordinate(ecm_hala, method = "MDS", dist="bray")
+plot_ordination(ecm_hala, ecm_hala_ordi2, type="samples", color="treatment")
+ecm_hala_ordi2b <- ordinate(ecm_hala, method = "MDS", dist="bray")
+plot_ordination(ecm_hala, ecm_hala_ordi2b, type="samples", color="specification")
 
+ecm_hala_ordi3 <- ordinate(as_binary_otu_table(ecm_hala), method = "NMDS", dist="jaccard")
+plot_ordination(ecm_hala, ecm_hala_ordi3, type="samples", color="treatment")
+ecm_hala_ordi4 <- ordinate(ecm_hala, method = "NMDS", dist="bray")
+plot_ordination(ecm_hala, ecm_hala_ordi4, type="samples", color="treatment")
+
+ecm_hala_ordi5 <- ordinate(as_binary_otu_table(ecm_hala), method = "NMDS", dist="jaccard")
+plot_ordination(ecm_hala, ecm_hala_ordi5, type="samples", color="treatment")
+ecm_hala_ordi6 <- ordinate(ecm_hala, method = "NMDS", dist="bray")
+plot_ordination(ecm_hala, ecm_hala_ordi6, type="samples", color="treatment")
+```
+
+=======================================================================================
+------------------------------------------------------
+# FANGAMON STUDY: randomly distributed retention trees
+------------------------------------------------------
+# design and sampling
+```{r overview }
+colnames(fanga_sam)
+summary(fanga_sam[,c(2,5:8)])
+summary(fanga_sam$plot)
+table(fanga_sam$plot,fanga_sam$treatment)
+
+# nb genus
+colnames(ecm_fanga@tax_table)
+as.factor(ecm_fanga@tax_table[,5]) %>% droplevels() %>% levels() # 18 genus
+```
+
+# plotting
+## bivariate analysis
+```{r plotting tests}
+ecm_fanga_ggplot1 <- phyloseq::plot_bar(as_binary_otu_table(ecm_fanga), x = "treatment") 
+ggplot(ecm_fanga_ggplot1$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment, y = Abundance))+
+  geom_bar(stat="identity", position = "stack") +
+  facet_grid(~year, scale="free")+
+  labs(title="", subtitle="")
+
+ecm_fanga_ggplot2 <- phyloseq::plot_bar(ecm_fanga, x = "treatment") 
+ggplot(ecm_fanga_ggplot2$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment, y = Abundance))+
+  geom_bar(stat="identity", position = "stack") +
+  facet_grid(~year, scale="free")+
+  labs(title="", subtitle="")  
+
+# position = fill -> relative abundance 
+```
+
+```{r trying understand difference between boolean and relative abundance}
+ecm_fanga_only_cc <- subset_samples(ecm_fanga, ecm_fanga@sam_data$treatment=="clearcut") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
+
+print(ecm_fanga_only_cc@otu_table)
+which(ecm_fanga_only_cc@otu_table>200,arr.ind = T) %>% rownames() 
+ecm_fanga_only_cc@tax_table[c("c10", "c21"),6] # 2 super abundant species 
+```
+
+## multivariate analysis
+```{r plotting tests}
+ecm_fanga_ordi1 <- ordinate(as_binary_otu_table(ecm_fanga), method = "MDS", dist="jaccard")
+plot_ordination(ecm_fanga, ecm_fanga_ordi1, type="samples", color="treatment")
+ecm_fanga_ordi2 <- ordinate(ecm_fanga, method = "MDS", dist="bray")
+plot_ordination(ecm_fanga, ecm_fanga_ordi2, type="samples", color="treatment")
+ecm_fanga_ordi2b <- ordinate(ecm_fanga, method = "MDS", dist="bray")
+plot_ordination(ecm_fanga, ecm_fanga_ordi2b, type="samples", color="specification")
+
+ecm_fanga_ordi3 <- ordinate(as_binary_otu_table(ecm_fanga), method = "NMDS", dist="jaccard")
+plot_ordination(ecm_fanga, ecm_fanga_ordi3, type="samples", color="treatment")
+ecm_fanga_ordi4 <- ordinate(ecm_fanga, method = "NMDS", dist="bray")
+plot_ordination(ecm_fanga, ecm_fanga_ordi4, type="samples", color="treatment")
+
+ecm_fanga_ordi5 <- ordinate(as_binary_otu_table(ecm_fanga), method = "NMDS", dist="jaccard")
+plot_ordination(ecm_fanga, ecm_fanga_ordi5, type="samples", color="treatment")
+ecm_fanga_ordi6 <- ordinate(ecm_fanga, method = "NMDS", dist="bray")
+plot_ordination(ecm_fanga, ecm_fanga_ordi6, type="samples", color="treatment")
+```
