@@ -101,11 +101,11 @@ clean_physeq <- function(physeq,
 ## only ECM and saprotrophs
 taxeco <- read.table("tax_table.txt",header=T,sep="\t") # change #N/A in excel in NA
 length(taxeco)
-taxeco[,c(3:10)] <- lapply(taxeco[,c(3:10)], as.factor) 
+taxeco[,c(3:length(taxeco))] <- lapply(taxeco[,c(3:length(taxeco))], as.factor) 
 rownames(taxeco) <- taxeco$Cluster_ID
 
 # otu table
-otu <- read.table("otu_table_redo.txt",header=F,sep="\t",na.strings = T) 
+otu <- read.table("otu_table.txt",header=F,sep="\t",na.strings = T) 
 otu = setNames(data.frame(t(otu[,-1])), otu[,1]) # transpose + 1st column (ie samples set as header
 ## samples = columns, otu abundance = rows
 colnames(otu)[1] <- "Cluster_ID" # after transposing, resolving pb with headers
@@ -115,6 +115,7 @@ nrow(otu)
 sam <- read.table("sample_table.txt",header=T,sep="\t",na.strings = T) 
 sam[sam==""] <- NA # filling the blanck by NAs
 length(sam)
+rownames(sam) <- sam$sample_id # after transposing, resolving pb with headers
 
 # subset guilds (saprotroph - ectomycorrizal)
 ecm <- subset(taxeco,taxeco$primary_lifestyle=="ectomycorrhizal") %>% arrange(desc(Cluster_Size))
@@ -127,7 +128,8 @@ otu_filtered <- merge(otu, taxeco, by = "Cluster_ID",sort=T) # using taxeco (alr
 # semi_join(otu, taxeco, by = "Cluster_ID") # not working because not similar df
 
 
-sam_filtered <- sam[sam$sample_order %in% colnames(otu_filtered),] # keep the rows (ie samples) that appear in others tables
+sam_filtered <- sam[sam$sample_id %in% colnames(otu_filtered),] # keep the rows (ie samples) that appear in others tables
+# if 0 obs, in df -> check column names (may differs among datasets)
 rownames(sam_filtered) <- sam_filtered[,1]
 
 rownames(otu_filtered) <- otu_filtered[,1] 
@@ -219,6 +221,8 @@ fanga_sam <- lapply(fanga@sam_data, as.factor) %>% as.data.frame()
 hala_sam <- lapply(hala@sam_data, as.factor) %>% as.data.frame()
 hala5_sam <- lapply(hala5@sam_data, as.factor) %>% as.data.frame()
 ```
+
+
 
 
 
