@@ -3,9 +3,29 @@ title: "PRELIMINARY_RESULTS"
 output: html_document
 date: "2023-03-08"
 ---
+controls: 
+alt+o = close all 
+shift+alt+o = open all
+
+for ggplot: position = fill -> relative abundance 
+
+# 1 LIBRARIES - PALETTES 
 ```{r libraries}
 library(plyr)
 library(pals)
+```
+
+```{r dummy graphs}
+list_mm <- lsf.str("package:MiscMetabar") 
+factor(list_mm)
+## to see all functions from a package
+
+# circles physeq
+circle_pq(ecm_phy, "site", taxa = "Phylum", add_nb_seq = F,
+          grid_col = "darkgrey",
+          row_col = c("darkred","#1F78B4","darkgreen"))
+
+sample_names(ecm_phy)
 ```
 
 ```{r color palette}
@@ -19,11 +39,26 @@ funky <- colorRampPalette(c("#A6CEE3","#1F78B4","#B2DF8A",
 "#6A3D9A","#FFFF99","#B15928"))
 ```
 
+# 2 OVERVIEW DATA FROM SITES
+```{r between sites}
+
+ggvenn_pq(ecm_phy, fact="site", taxonomic_rank = "Genus") 
+# not working well
+
+circle_pq(ecm_phy, "site", taxa = "Genus", add_nb_seq = F) # only 53,57% plotted
+circle_pq(ecm_phy, "site", taxa = "Phylum", add_nb_seq = F,
+          grid_col = "darkgrey",
+          row_col = c("darkred","#1F78B4","darkgreen"))
+
+rarecurve(t(otu_table(ps)), step=50, cex=0.5)
+rarecurve(otu_table(ecm_phy), step=50, cex=0.5)
+rarecurve(t(otu_table(ecm_phy)), step=50, cex=0.5)
+```
+
 =======================================================================================
--------------------------------------
-# 1 HALASEN STUDY: edge retention trees
--------------------------------------
-# design and sampling
+
+# 3 HALASEN STUDY: edge retention trees
+## 3.1 design and sampling
 ```{r overview }
 # sampling design
 colnames(hala_sam)
@@ -34,13 +69,23 @@ table(hala_sam$plot,hala_sam$treatment)
 colnames(hala_ecm@tax_table)
 as.factor(hala_ecm@tax_table[,5]) %>% droplevels() %>% levels() 
 genus_nb_hala <- as.factor(hala_ecm@tax_table[,5]) %>% droplevels() %>% levels() %>% length()
-# 23 genus
-# attribution facolors, or whatever to have proper constrasted colors on graphicals representations
+## 23 genus
+## attribution facolors, or whatever to have proper constrasted colors on graphicals representations
+
+ggvenn_pq(hala_ecm, fact="year", taxonomic_rank = "Genus")
 ```
 
-# plotting
-## bivariate analysis
+## 3.2 plotting
+### 3.2.1 bivariate analysis
 ```{r plotting tests}
+# boxplot
+hala_hill_site <- hill_pq(hala_ecm, variable = "year") 
+# different number of row because samples row in sam_data; and col in otu_table
+hala_hill_site[[1]]+ labs(title="Hill 0 : Type de sols", subtitle="Echantillon de SOL")
+hala_hill_site[[2]]+ labs(title="Hill 1 : Type de sols", subtitle="Echantillon de SOL")
+hala_hill_site[[3]]+ labs(title="Hill 2 : Type de sols", subtitle="Echantillon de SOL")
+
+# OTU Genus count (0;1) by treatment
 hala_ecm_ggplot1 <- phyloseq::plot_bar(as_binary_otu_table(hala_ecm), x = "treatment") 
 ggplot(hala_ecm_ggplot1$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment, y = Abundance))+
   geom_bar(stat="identity", position = "stack") +
@@ -50,6 +95,7 @@ ggplot(hala_ecm_ggplot1$data, aes(fill= fct_reorder(as.factor(Genus), Abundance)
   guides(fill=guide_legend(title="Genus"))
 # cols25-funky palette
 
+# OTU Genus abundance by treatment
 hala_ecm_ggplot2 <- phyloseq::plot_bar(hala_ecm, x = "treatment") 
 ggplot(hala_ecm_ggplot2$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment, y = Abundance))+
   geom_bar(stat="identity", position = "stack")+
@@ -57,7 +103,7 @@ ggplot(hala_ecm_ggplot2$data, aes(fill= fct_reorder(as.factor(Genus), Abundance)
   facet_grid(~year, scale="free")+
   labs(title="OTU Genus abundance by cutting treatment and year",subtitle = "Halasen_edge")+
   guides(fill=guide_legend(title="Genus"))
-# position = fill -> relative abundance 
+
 ```
 
 - change between 2012 2018 -> could be explained by a difference in the biomolecular methods ? we should not expect any difference in forest control treatment between years
@@ -135,6 +181,12 @@ plot_ordination(hala_ecm, hala_ecm_ordi8, type="taxa", color="Order", shape="Phy
   ggtitle(label = "MDS of samples from Halasen_edge by year",subtitle = "abundance (bray-curtis distance)")
 ```
 
+```{r circle phyloseq}
+
+circle_pq(hala_ecm, "treatment", taxa = "Genus", add_nb_seq = F)
+```
+
+
 ```{r raref test}
 data('GlobalPatterns')
 
@@ -198,7 +250,7 @@ ggplot(
 ```
 
 
-## multivariate analysis
+### 3.2.2 multivariate analysis
 ```{r plotting tests}
 hala_ecm_ordi1 <- ordinate(as_binary_otu_table(hala_ecm), method = "MDS", dist="jaccard")
 plot_ordination(hala_ecm, hala_ecm_ordi1, type="samples", color="treatment")
@@ -219,10 +271,8 @@ plot_ordination(hala_ecm, hala_ecm_ordi6, type="samples", color="treatment")
 ```
 
 =======================================================================================
-------------------------------------------------------
-# 2 HALASEN_5P STUDY: randomly distributed retention trees
-------------------------------------------------------
-# design and sampling
+# 4 HALASEN_5P STUDY: randomly distributed retention trees
+## 4.1 design and sampling
 ```{r overview }
 colnames(hala5_sam)
 summary(hala5_sam[,c(2,5:8)])
@@ -236,8 +286,8 @@ as.factor(hala5_ecm@tax_table[,5]) %>% droplevels() %>% levels()
 genus_nb_hala5 <- as.factor(hala5_ecm@tax_table[,5]) %>% droplevels() %>% levels() %>% length() # 18 genus
 ```
 
-# plotting
-## bivariate analysis
+## 4.2 plotting
+### 4.2.1 bivariate analysis
 ```{r plotting tests}
 hala5_ecm_ggplot1 <- phyloseq::plot_bar(as_binary_otu_table(hala5_ecm), x = "treatment") 
 ggplot(hala5_ecm_ggplot1$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment, y = Abundance))+
@@ -256,7 +306,7 @@ ggplot(hala5_ecm_ggplot2$data, aes(fill= fct_reorder(as.factor(Genus), Abundance
   guides(fill=guide_legend(title="Genus"))
 ```
 
-## multivariate analysis
+### 4.2.2 multivariate analysis
 ```{r plotting tests}
 hala5_ecm_ordi1 <- ordinate(hala5_ecm, method = "MDS", dist="bray")
 plot_ordination(hala5_ecm, hala5_ecm_ordi1, type="samples", color="treatment",label="sample_id")+
@@ -299,13 +349,13 @@ plot_ordination(hala5_ecm, hala5_ecm_ordi_phyl1, type="taxa", color="Order", sha
   ggtitle(label = "MDS of samples from Halasen_edge by year",subtitle = "abundance (bray-curtis distance)")
 
 
-ggvenn_pq(ecm_phy, fact="site")
 ```
+
 =======================================================================================
-------------------------------------------------------
-# 3 FANGAMON STUDY: randomly distributed retention trees
-------------------------------------------------------
-# design and sampling
+
+# 5 FANGAMON STUDY: randomly distributed retention trees
+
+## 5.1 design and sampling
 ```{r overview }
 colnames(fanga_sam)
 summary(fanga_sam[,c(2,5:8)])
@@ -318,8 +368,8 @@ as.factor(fanga_ecm@tax_table[,5]) %>% droplevels() %>% levels()
 genus_nb_fanga <- as.factor(fanga_ecm@tax_table[,5]) %>% droplevels() %>% levels() %>% length() # 16 genus
 ```
 
-# plotting
-## bivariate analysis
+## 5.2 plotting
+### 5.2.1 bivariate analysis
 ```{r plotting tests}
 fanga_ecm_ggplot1 <- phyloseq::plot_bar(as_binary_otu_table(fanga_ecm), x = "treatment") 
 ggplot(fanga_ecm_ggplot1$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment, y = Abundance))+
@@ -373,7 +423,7 @@ ggplot(fanga_ecm_ggplot2$data, aes(fill= fct_reorder(as.factor(Genus), Abundance
   labs(title="", subtitle="")  
 ```
 
-## multivariate analysis
+### 5.2.2 multivariate analysis
 ```{r plotting tests}
 fanga_ecm_ordi1 <- ordinate(as_binary_otu_table(fanga_ecm), method = "MDS", dist="jaccard")
 plot_ordination(fanga_ecm, fanga_ecm_ordi1, type="samples", color="treatment")

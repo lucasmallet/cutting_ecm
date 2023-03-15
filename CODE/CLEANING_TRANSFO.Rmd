@@ -3,6 +3,11 @@ title: "Prelim_results"
 output: html_document
 date: "2023-03-06"
 ---
+
+install.packages("devtools")
+devtools::install_github("adrientaudiere/MiscMetabar") -> a installer 
+devtools::install_github("jokergoo/circlize")
+
 ```{r packages}
 library(ggplot2)
 library(dplyr)
@@ -10,6 +15,9 @@ library(tidyverse)
 library(vegan)
 library(phyloseq)
 library(forcats)
+library(MiscMetabar)
+library(circlize)
+library(ggVennDiagram)
 ```
 
 ```{r functions}
@@ -196,7 +204,8 @@ sample_names(physeq) # missing the controls and negatives
 ```{r physeq susbsets}
 # subsetting based on sites and guilds 
 ecm_phy <- subset_taxa(physeq, primary_lifestyle=="ectomycorrhizal") 
-ecm_phy <- subset_samples(ecm_phy, site=!"control") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
+ecm_phy <- subset_samples(ecm_phy, (ecm_phy@sam_data$site!="control")) %>% 
+clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = F)
 sapr_phy <- subset_taxa(physeq, primary_lifestyle!="ectomycorrhizal")
 
 fanga <- subset_samples(physeq, physeq@sam_data$site=="Fangamon") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
