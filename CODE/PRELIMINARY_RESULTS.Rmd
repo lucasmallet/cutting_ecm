@@ -5,10 +5,10 @@ date: "2023-03-08"
 ---
 ```{r libraries}
 library(plyr)
+library(pals)
 ```
 
 ```{r color palette}
-library(pals)
 pal.bands(alphabet, alphabet2, cols25, glasbey, kelly, polychrome, 
   stepped, tol, watlington,
   show.names=FALSE)
@@ -31,9 +31,9 @@ summary(hala_sam[,c(2,5:8)])
 table(hala_sam$plot,hala_sam$treatment)
 
 # nb genus
-colnames(ecm_hala@tax_table)
-as.factor(ecm_hala@tax_table[,5]) %>% droplevels() %>% levels() 
-genus_nb_hala <- as.factor(ecm_hala@tax_table[,5]) %>% droplevels() %>% levels() %>% length()
+colnames(hala_ecm@tax_table)
+as.factor(hala_ecm@tax_table[,5]) %>% droplevels() %>% levels() 
+genus_nb_hala <- as.factor(hala_ecm@tax_table[,5]) %>% droplevels() %>% levels() %>% length()
 # 23 genus
 # attribution facolors, or whatever to have proper constrasted colors on graphicals representations
 ```
@@ -41,8 +41,8 @@ genus_nb_hala <- as.factor(ecm_hala@tax_table[,5]) %>% droplevels() %>% levels()
 # plotting
 ## bivariate analysis
 ```{r plotting tests}
-ecm_hala_ggplot1 <- phyloseq::plot_bar(as_binary_otu_table(ecm_hala), x = "treatment") 
-ggplot(ecm_hala_ggplot1$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment, y = Abundance))+
+hala_ecm_ggplot1 <- phyloseq::plot_bar(as_binary_otu_table(hala_ecm), x = "treatment") 
+ggplot(hala_ecm_ggplot1$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment, y = Abundance))+
   geom_bar(stat="identity", position = "stack") +
   scale_fill_manual(values = cols25(genus_nb_hala))+
   facet_grid(~year, scale="free")+
@@ -50,8 +50,8 @@ ggplot(ecm_hala_ggplot1$data, aes(fill= fct_reorder(as.factor(Genus), Abundance)
   guides(fill=guide_legend(title="Genus"))
 # cols25-funky palette
 
-ecm_hala_ggplot2 <- phyloseq::plot_bar(ecm_hala, x = "treatment") 
-ggplot(ecm_hala_ggplot2$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment, y = Abundance))+
+hala_ecm_ggplot2 <- phyloseq::plot_bar(hala_ecm, x = "treatment") 
+ggplot(hala_ecm_ggplot2$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment, y = Abundance))+
   geom_bar(stat="identity", position = "stack")+
   scale_fill_manual(values = cols25(genus_nb_hala))+
   facet_grid(~year, scale="free")+
@@ -63,27 +63,27 @@ ggplot(ecm_hala_ggplot2$data, aes(fill= fct_reorder(as.factor(Genus), Abundance)
 - change between 2012 2018 -> could be explained by a difference in the biomolecular methods ? we should not expect any difference in forest control treatment between years
 
 ```{r pattern with edges}
-print(ecm_hala@sam_data)
-factor(ecm_hala@sam_data$specification) %>% levels()
+print(hala_ecm@sam_data)
+factor(hala_ecm@sam_data$specification) %>% levels()
 
-ecm_hala@sam_data$specification <- plyr::revalue(ecm_hala@sam_data$specification,
+hala_ecm@sam_data$specification <- plyr::revalue(hala_ecm@sam_data$specification,
                            c("edge_north"="edge", 
                              "edge_south"="edge",
                              "kant_norra"="edge", 
                              "middle_lower"="middle", 
                              "middle_upper"="middle",
                              "midle"="middle"))
-as.factor(ecm_hala@sam_data$specification) %>% droplevels() %>% levels()
+as.factor(hala_ecm@sam_data$specification) %>% droplevels() %>% levels()
 
-ecm_hala@sam_data <- within(ecm_hala@sam_data, specification[specification=="middle" & treatment=="forest"] <- "FOR_middle") 
+hala_ecm@sam_data <- within(hala_ecm@sam_data, specification[specification=="middle" & treatment=="forest"] <- "FOR_middle") 
 
-ecm_hala@sam_data$specification <- plyr::revalue(ecm_hala@sam_data$specification,
+hala_ecm@sam_data$specification <- plyr::revalue(hala_ecm@sam_data$specification,
                            c("middle"="CC_middle", 
                              "edge"="CC_edge"))
-as.factor(ecm_hala@sam_data$specification) %>% droplevels() %>% levels()
+as.factor(hala_ecm@sam_data$specification) %>% droplevels() %>% levels()
 
-ecm_hala_ggplot3 <- phyloseq::plot_bar(as_binary_otu_table(ecm_hala), x = "specification") 
-ggplot(ecm_hala_ggplot3$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=specification, y = Abundance))+
+hala_ecm_ggplot3 <- phyloseq::plot_bar(as_binary_otu_table(hala_ecm), x = "specification") 
+ggplot(hala_ecm_ggplot3$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=specification, y = Abundance))+
   geom_bar(stat="identity", position = "stack") +
   scale_fill_manual(values = cols25(genus_nb_hala))+
   facet_grid(~year, scale="free")+
@@ -92,8 +92,8 @@ ggplot(ecm_hala_ggplot3$data, aes(fill= fct_reorder(as.factor(Genus), Abundance)
   guides(fill=guide_legend(title="Genus"))+
   theme(axis.text.x=element_text(color="coral4", size=8, angle=20))
 
-ecm_hala_ggplot4 <- phyloseq::plot_bar(ecm_hala, x = "specification") 
-ggplot(ecm_hala_ggplot4$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=specification, y = Abundance))+
+hala_ecm_ggplot4 <- phyloseq::plot_bar(hala_ecm, x = "specification") 
+ggplot(hala_ecm_ggplot4$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=specification, y = Abundance))+
   geom_bar(stat="identity", position = "stack")+
   scale_fill_manual(values = cols25(genus_nb_hala))+
   facet_grid(~year, scale="free")+
@@ -102,15 +102,37 @@ ggplot(ecm_hala_ggplot4$data, aes(fill= fct_reorder(as.factor(Genus), Abundance)
   guides(fill=guide_legend(title="Genus"))+
   theme(axis.text.x=element_text(color="coral4", size=8, angle=20))
 
-ecm_hala_ordi7 <- ordinate(as_binary_otu_table(ecm_hala), method = "MDS", dist="jaccard")
-plot_ordination(ecm_hala, ecm_hala_ordi7, type="samples", color="specification",label="sample_id")+
+hala_ecm_ordi7 <- ordinate(as_binary_otu_table(hala_ecm), method = "MDS", dist="jaccard")
+plot_ordination(hala_ecm, hala_ecm_ordi7, type="samples", color="specification",label="sample_id")+
   geom_point(size=2)+
   facet_wrap(~year)+
   # color and elipse
   scale_color_manual(values = c("red","orange","darkgreen"))+
   stat_ellipse(type="t", level=0.70)+
   # legend
-  guides(color=guide_legend(title="position from CC"))
+  guides(color=guide_legend(title="position from CC"))+
+  ggtitle(label = "MDS of samples from Halasen_edge by year", subtitle="presence-absence (jaccard distance)")
+
+hala_ecm_ordi8 <- ordinate(hala_ecm, method = "MDS", dist="bray")
+plot_ordination(hala_ecm, hala_ecm_ordi8, type="samples", color="specification",label="sample_id")+
+  geom_point(size=2)+
+  facet_wrap(~year)+
+  # color and elipse
+  scale_color_manual(values = c("red","orange","darkgreen"))+
+  stat_ellipse(type="t", level=0.70)+
+  # legend
+  guides(color=guide_legend(title="position from CC"))+
+  ggtitle(label = "MDS of samples from Halasen_edge by year",subtitle = "abundance (bray-curtis distance)")
+
+hala_ecm_ordi8 <- ordinate(hala_ecm, method = "MDS", dist="bray")
+plot_ordination(hala_ecm, hala_ecm_ordi8, type="taxa", color="Order", shape="Phylum",label="sample_id")+
+  geom_point(size=2)+
+  # color and elipse
+  scale_color_manual(values =cols25(10))+
+  stat_ellipse(type="t", level=0.70)+
+  # legend
+  guides(color=guide_legend(title="position from CC"))+
+  ggtitle(label = "MDS of samples from Halasen_edge by year",subtitle = "abundance (bray-curtis distance)")
 ```
 
 ```{r raref test}
@@ -151,11 +173,11 @@ calculate_rarefaction_curves <- function(psdata, measures, depths) {
 rarefaction_curve_data <- calculate_rarefaction_curves(psdata, c('Observed', 'Shannon'), rep(c(1, 10, 100, 1000, 1:100 * 10000), each = 10))
 summary(rarefaction_curve_data)
 
-rarefaction_curve_data <- calculate_rarefaction_curves(ecm_hala, c("Observed","Shannon"), rep(c(1, 10, 100, 1000, 1:100 * 10000), each = 10))
+rarefaction_curve_data <- calculate_rarefaction_curves(hala_ecm, c("Observed","Shannon"), rep(c(1, 10, 100, 1000, 1:100 * 10000), each = 10))
 
 rarefaction_curve_data_summary <- ddply(rarefaction_curve_data, c('Depth', 'Sample', 'Measure'), summarise, Alpha_diversity_mean = mean(Alpha_diversity), Alpha_diversity_sd = sd(Alpha_diversity))
 
-rarefaction_curve_data_summary_verbose <- merge(rarefaction_curve_data_summary, data.frame(sample_data(ecm_hala)), by.x = 'Sample', by.y = 'row.names')
+rarefaction_curve_data_summary_verbose <- merge(rarefaction_curve_data_summary, data.frame(sample_data(hala_ecm)), by.x = 'Sample', by.y = 'row.names')
 
 ggplot(
   data = rarefaction_curve_data_summary_verbose,
@@ -178,22 +200,22 @@ ggplot(
 
 ## multivariate analysis
 ```{r plotting tests}
-ecm_hala_ordi1 <- ordinate(as_binary_otu_table(ecm_hala), method = "MDS", dist="jaccard")
-plot_ordination(ecm_hala, ecm_hala_ordi1, type="samples", color="treatment")
-ecm_hala_ordi2 <- ordinate(ecm_hala, method = "MDS", dist="bray")
-plot_ordination(ecm_hala, ecm_hala_ordi2, type="samples", color="treatment")
-ecm_hala_ordi2b <- ordinate(ecm_hala, method = "MDS", dist="bray")
-plot_ordination(ecm_hala, ecm_hala_ordi2b, type="samples", color="specification")
+hala_ecm_ordi1 <- ordinate(as_binary_otu_table(hala_ecm), method = "MDS", dist="jaccard")
+plot_ordination(hala_ecm, hala_ecm_ordi1, type="samples", color="treatment")
+hala_ecm_ordi2 <- ordinate(hala_ecm, method = "MDS", dist="bray")
+plot_ordination(hala_ecm, hala_ecm_ordi2, type="samples", color="treatment")
+hala_ecm_ordi2b <- ordinate(hala_ecm, method = "MDS", dist="bray")
+plot_ordination(hala_ecm, hala_ecm_ordi2b, type="samples", color="specification")
 
-ecm_hala_ordi3 <- ordinate(as_binary_otu_table(ecm_hala), method = "NMDS", dist="jaccard")
-plot_ordination(ecm_hala, ecm_hala_ordi3, type="samples", color="treatment")
-ecm_hala_ordi4 <- ordinate(ecm_hala, method = "NMDS", dist="bray")
-plot_ordination(ecm_hala, ecm_hala_ordi4, type="samples", color="treatment")
+hala_ecm_ordi3 <- ordinate(as_binary_otu_table(hala_ecm), method = "NMDS", dist="jaccard")
+plot_ordination(hala_ecm, hala_ecm_ordi3, type="samples", color="treatment")
+hala_ecm_ordi4 <- ordinate(hala_ecm, method = "NMDS", dist="bray")
+plot_ordination(hala_ecm, hala_ecm_ordi4, type="samples", color="treatment")
 
-ecm_hala_ordi5 <- ordinate(as_binary_otu_table(ecm_hala), method = "NMDS", dist="jaccard")
-plot_ordination(ecm_hala, ecm_hala_ordi5, type="samples", color="treatment")
-ecm_hala_ordi6 <- ordinate(ecm_hala, method = "NMDS", dist="bray")
-plot_ordination(ecm_hala, ecm_hala_ordi6, type="samples", color="treatment")
+hala_ecm_ordi5 <- ordinate(as_binary_otu_table(hala_ecm), method = "NMDS", dist="jaccard")
+plot_ordination(hala_ecm, hala_ecm_ordi5, type="samples", color="treatment")
+hala_ecm_ordi6 <- ordinate(hala_ecm, method = "NMDS", dist="bray")
+plot_ordination(hala_ecm, hala_ecm_ordi6, type="samples", color="treatment")
 ```
 
 =======================================================================================
@@ -206,27 +228,27 @@ colnames(hala5_sam)
 summary(hala5_sam[,c(2,5:8)])
 summary(hala5_sam$plot)
 table(hala5_sam$plot,hala5_sam$treatment)
-print(ecm_hala5@sam_data)
+print(hala5_ecm@sam_data)
 
 # nb genus
-colnames(ecm_hala5@tax_table)
-as.factor(ecm_hala5@tax_table[,5]) %>% droplevels() %>% levels()
-genus_nb_hala5 <- as.factor(ecm_hala5@tax_table[,5]) %>% droplevels() %>% levels() %>% length() # 18 genus
+colnames(hala5_ecm@tax_table)
+as.factor(hala5_ecm@tax_table[,5]) %>% droplevels() %>% levels()
+genus_nb_hala5 <- as.factor(hala5_ecm@tax_table[,5]) %>% droplevels() %>% levels() %>% length() # 18 genus
 ```
 
 # plotting
 ## bivariate analysis
 ```{r plotting tests}
-ecm_hala5_ggplot1 <- phyloseq::plot_bar(as_binary_otu_table(ecm_hala5), x = "treatment") 
-ggplot(ecm_hala5_ggplot1$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment, y = Abundance))+
+hala5_ecm_ggplot1 <- phyloseq::plot_bar(as_binary_otu_table(hala5_ecm), x = "treatment") 
+ggplot(hala5_ecm_ggplot1$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment, y = Abundance))+
   geom_bar(stat="identity", position = "stack") +
   scale_fill_manual(values = cols25(genus_nb_hala5))+
   facet_grid(~year, scale="free")+
   labs(title="OTU Genus count (0;1) by cutting treatment",subtitle = "Halasen_P5")+
   guides(fill=guide_legend(title="Genus"))
 
-ecm_hala5_ggplot2 <- phyloseq::plot_bar(ecm_hala5, x = "treatment") 
-ggplot(ecm_hala5_ggplot2$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment, y = Abundance))+
+hala5_ecm_ggplot2 <- phyloseq::plot_bar(hala5_ecm, x = "treatment") 
+ggplot(hala5_ecm_ggplot2$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment, y = Abundance))+
   geom_bar(stat="identity", position = "stack") +
   scale_fill_manual(values = cols25(genus_nb_hala5))+
   facet_grid(~year, scale="free")+
@@ -236,22 +258,48 @@ ggplot(ecm_hala5_ggplot2$data, aes(fill= fct_reorder(as.factor(Genus), Abundance
 
 ## multivariate analysis
 ```{r plotting tests}
-ecm_hala5_ordi1 <- ordinate(as_binary_otu_table(ecm_hala5), method = "MDS", dist="jaccard")
-plot_ordination(ecm_hala5, ecm_hala5_ordi1, type="samples", color="treatment")
-ecm_hala5_ordi2 <- ordinate(ecm_hala5, method = "MDS", dist="bray")
-plot_ordination(ecm_hala5, ecm_hala5_ordi2, type="samples", color="treatment")
-ecm_hala5_ordi2b <- ordinate(ecm_hala5, method = "MDS", dist="bray")
-plot_ordination(ecm_hala5, ecm_hala5_ordi2b, type="samples", color="specification")
+hala5_ecm_ordi1 <- ordinate(hala5_ecm, method = "MDS", dist="bray")
+plot_ordination(hala5_ecm, hala5_ecm_ordi1, type="samples", color="treatment",label="sample_id")+
+  geom_point(size=2)+
+  # color and elipse
+  scale_color_manual(values = c("red","orange","darkgreen"))+
+  stat_ellipse(type="t", level=0.70)+
+  # legend
+  guides(color=guide_legend(title="treatment"))+
+  ggtitle(label = "MDS of samples from Halasen_5P",subtitle = "abundance")
 
-ecm_hala5_ordi3 <- ordinate(as_binary_otu_table(ecm_hala5), method = "NMDS", dist="jaccard")
-plot_ordination(ecm_hala5, ecm_hala5_ordi3, type="samples", color="treatment")
-ecm_hala5_ordi4 <- ordinate(ecm_hala5, method = "NMDS", dist="bray")
-plot_ordination(ecm_hala5, ecm_hala5_ordi4, type="samples", color="treatment")
+hala5_ecm_ordi1 <- ordinate(as_binary_otu_table(hala5_ecm), method = "MDS", dist="jaccard")
+plot_ordination(hala5_ecm, hala5_ecm_ordi1, type="samples", color="treatment",label="sample_id")+
+  geom_point(size=2)+
+  # color and elipse
+  scale_color_manual(values = c("red","darkgreen","orange"))+
+  stat_ellipse(type="t", level=0.70)+
+  # legend
+  guides(color=guide_legend(title="treatment"))+
+  ggtitle(label = "MDS of samples from Halasen_5P",subtitle = "abundance")
 
-ecm_hala5_ordi5 <- ordinate(as_binary_otu_table(ecm_hala5), method = "NMDS", dist="jaccard")
-plot_ordination(ecm_hala5, ecm_hala5_ordi5, type="samples", color="treatment")
-ecm_hala5_ordi6 <- ordinate(ecm_hala5, method = "NMDS", dist="bray")
-plot_ordination(ecm_hala5, ecm_hala5_ordi6, type="samples", color="treatment")
+hala5_ecm_ordi1 <- ordinate(as_binary_otu_table(hala5_ecm), method = "NMDS", dist="jaccard",k=20)
+plot_ordination(hala5_ecm, hala5_ecm_ordi1, type="samples", color="treatment",label="sample_id")+
+  geom_point(size=2)+
+  # color and elipse
+  scale_color_manual(values = c("red","darkgreen","orange"))+
+  stat_ellipse(type="t", level=0.70)+
+  # legend
+  guides(color=guide_legend(title="treatment"))+
+  ggtitle(label = "MDS of samples from Halasen_5P",subtitle = "abundance")
+
+hala5_ecm_ordi_phyl1 <- ordinate(hala5_ecm, method = "MDS", dist="bray")
+plot_ordination(hala5_ecm, hala5_ecm_ordi_phyl1, type="taxa", color="Order", shape="Phylum")+
+  geom_point(size=2)+
+  # color and elipse
+  scale_color_manual(values =cols25(10))+
+  stat_ellipse(type="t", level=0.70)+
+  # legend
+  guides(color=guide_legend(title="position from CC"))+
+  ggtitle(label = "MDS of samples from Halasen_edge by year",subtitle = "abundance (bray-curtis distance)")
+
+
+ggvenn_pq(ecm_phy, fact="site")
 ```
 =======================================================================================
 ------------------------------------------------------
@@ -265,16 +313,16 @@ summary(fanga_sam$plot)
 table(fanga_sam$plot,fanga_sam$treatment)
 
 # nb genus
-colnames(ecm_fanga@tax_table)
-as.factor(ecm_fanga@tax_table[,5]) %>% droplevels() %>% levels()
-genus_nb_fanga <- as.factor(ecm_fanga@tax_table[,5]) %>% droplevels() %>% levels() %>% length() # 16 genus
+colnames(fanga_ecm@tax_table)
+as.factor(fanga_ecm@tax_table[,5]) %>% droplevels() %>% levels()
+genus_nb_fanga <- as.factor(fanga_ecm@tax_table[,5]) %>% droplevels() %>% levels() %>% length() # 16 genus
 ```
 
 # plotting
 ## bivariate analysis
 ```{r plotting tests}
-ecm_fanga_ggplot1 <- phyloseq::plot_bar(as_binary_otu_table(ecm_fanga), x = "treatment") 
-ggplot(ecm_fanga_ggplot1$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment, y = Abundance))+
+fanga_ecm_ggplot1 <- phyloseq::plot_bar(as_binary_otu_table(fanga_ecm), x = "treatment") 
+ggplot(fanga_ecm_ggplot1$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment, y = Abundance))+
   geom_bar(stat="identity", position = "stack") +
   facet_grid(~year, scale="free")+
   scale_fill_manual(values = cols25(genus_nb_fanga))+
@@ -282,8 +330,8 @@ ggplot(ecm_fanga_ggplot1$data, aes(fill= fct_reorder(as.factor(Genus), Abundance
   labs(title="OTU Genus count (0;1) by cutting treatment",subtitle = "Fangamon")+
   guides(fill=guide_legend(title="Genus"))
 
-ecm_fanga_ggplot2 <- phyloseq::plot_bar(ecm_fanga, x = "treatment") 
-ggplot(ecm_fanga_ggplot2$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment, y = Abundance))+
+fanga_ecm_ggplot2 <- phyloseq::plot_bar(fanga_ecm, x = "treatment") 
+ggplot(fanga_ecm_ggplot2$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment, y = Abundance))+
   geom_bar(stat="identity", position = "stack") +
   facet_grid(~year, scale="free")+
   scale_fill_manual(values = cols25(genus_nb_fanga))+
@@ -295,22 +343,22 @@ ggplot(ecm_fanga_ggplot2$data, aes(fill= fct_reorder(as.factor(Genus), Abundance
 ```
 
 ```{r trying understand difference between boolean and relative abundance}
-ecm_fanga_only_cc <- subset_samples(ecm_fanga, ecm_fanga@sam_data$treatment=="clearcut") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
+fanga_ecm_only_cc <- subset_samples(fanga_ecm, fanga_ecm@sam_data$treatment=="clearcut") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
 
-print(ecm_fanga_only_cc@otu_table)
-which(ecm_fanga_only_cc@otu_table>200,arr.ind = T) %>% rownames() 
-ecm_fanga_only_cc@tax_table[c("c10", "c21"),6] # 2 super abundant species 
+print(fanga_ecm_only_cc@otu_table)
+which(fanga_ecm_only_cc@otu_table>200,arr.ind = T) %>% rownames() 
+fanga_ecm_only_cc@tax_table[c("c10", "c21"),6] # 2 super abundant species 
 ```
 
 ```{r maybe a contamination for a sample?}
-ecm_fanga_only_cc_2012 <- subset_samples(ecm_fanga, ecm_fanga@sam_data$year=="2012" & ecm_fanga@sam_data$treatment=="clearcut") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
-print(ecm_fanga_only_cc_2012@sam_data)
-print(ecm_fanga_only_cc_2012@otu_table) # c10 in both samples, c21 in another different one... no specific contamination it seems
+fanga_ecm_only_cc_2012 <- subset_samples(fanga_ecm, fanga_ecm@sam_data$year=="2012" & fanga_ecm@sam_data$treatment=="clearcut") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
+print(fanga_ecm_only_cc_2012@sam_data)
+print(fanga_ecm_only_cc_2012@otu_table) # c10 in both samples, c21 in another different one... no specific contamination it seems
 
-ecm_fanga_excl_samples <- subset_samples(ecm_fanga, !ecm_fanga@sam_data$sample_id %in% c("s152","s45")) %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
+fanga_ecm_excl_samples <- subset_samples(fanga_ecm, !fanga_ecm@sam_data$sample_id %in% c("s152","s45")) %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
 
-ecm_fanga_ggplot3 <- phyloseq::plot_bar(as_binary_otu_table(ecm_fanga_excl_samples), x = "treatment") 
-ggplot(ecm_fanga_ggplot3$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment, y = Abundance))+
+fanga_ecm_ggplot3 <- phyloseq::plot_bar(as_binary_otu_table(fanga_ecm_excl_samples), x = "treatment") 
+ggplot(fanga_ecm_ggplot3$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment, y = Abundance))+
   geom_bar(stat="identity", position = "stack") +
   facet_grid(~year, scale="free")+
   scale_fill_manual(values = cols25(genus_nb_fanga))+
@@ -318,8 +366,8 @@ ggplot(ecm_fanga_ggplot3$data, aes(fill= fct_reorder(as.factor(Genus), Abundance
   labs(title="OTU Genus count (0;1) by cutting treatment",subtitle = "Fangamon- exlcuded s152,s45 samples")+
   guides(fill=guide_legend(title="Genus"))
 
-ecm_fanga_ggplot2 <- phyloseq::plot_bar(ecm_fanga_excl_samples, x = "treatment") 
-ggplot(ecm_fanga_ggplot2$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment, y = Abundance))+
+fanga_ecm_ggplot2 <- phyloseq::plot_bar(fanga_ecm_excl_samples, x = "treatment") 
+ggplot(fanga_ecm_ggplot2$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment, y = Abundance))+
   geom_bar(stat="identity", position = "stack") +
   facet_grid(~year, scale="free")+
   labs(title="", subtitle="")  
@@ -327,20 +375,40 @@ ggplot(ecm_fanga_ggplot2$data, aes(fill= fct_reorder(as.factor(Genus), Abundance
 
 ## multivariate analysis
 ```{r plotting tests}
-ecm_fanga_ordi1 <- ordinate(as_binary_otu_table(ecm_fanga), method = "MDS", dist="jaccard")
-plot_ordination(ecm_fanga, ecm_fanga_ordi1, type="samples", color="treatment")
-ecm_fanga_ordi2 <- ordinate(ecm_fanga, method = "MDS", dist="bray")
-plot_ordination(ecm_fanga, ecm_fanga_ordi2, type="samples", color="treatment")
-ecm_fanga_ordi2b <- ordinate(ecm_fanga, method = "MDS", dist="bray")
-plot_ordination(ecm_fanga, ecm_fanga_ordi2b, type="samples", color="specification")
+fanga_ecm_ordi1 <- ordinate(as_binary_otu_table(fanga_ecm), method = "MDS", dist="jaccard")
+plot_ordination(fanga_ecm, fanga_ecm_ordi1, type="samples", color="treatment")
+fanga_ecm_ordi2 <- ordinate(fanga_ecm, method = "MDS", dist="bray")
+plot_ordination(fanga_ecm, fanga_ecm_ordi2, type="samples", color="treatment")
+fanga_ecm_ordi2b <- ordinate(fanga_ecm, method = "MDS", dist="bray")
+plot_ordination(fanga_ecm, fanga_ecm_ordi2b, type="samples", color="specification")
 
-ecm_fanga_ordi3 <- ordinate(as_binary_otu_table(ecm_fanga), method = "NMDS", dist="jaccard")
-plot_ordination(ecm_fanga, ecm_fanga_ordi3, type="samples", color="treatment")
-ecm_fanga_ordi4 <- ordinate(ecm_fanga, method = "NMDS", dist="bray")
-plot_ordination(ecm_fanga, ecm_fanga_ordi4, type="samples", color="treatment")
+fanga_ecm_ordi3 <- ordinate(as_binary_otu_table(fanga_ecm), method = "NMDS", dist="jaccard")
+plot_ordination(fanga_ecm, fanga_ecm_ordi3, type="samples", color="treatment")
+fanga_ecm_ordi4 <- ordinate(fanga_ecm, method = "NMDS", dist="bray")
+plot_ordination(fanga_ecm, fanga_ecm_ordi4, type="samples", color="treatment")
 
-ecm_fanga_ordi5 <- ordinate(as_binary_otu_table(ecm_fanga), method = "NMDS", dist="jaccard")
-plot_ordination(ecm_fanga, ecm_fanga_ordi5, type="samples", color="treatment")
-ecm_fanga_ordi6 <- ordinate(ecm_fanga, method = "NMDS", dist="bray")
-plot_ordination(ecm_fanga, ecm_fanga_ordi6, type="samples", color="treatment")
+fanga_ecm_ordi5 <- ordinate(as_binary_otu_table(fanga_ecm), method = "NMDS", dist="jaccard")
+plot_ordination(fanga_ecm, fanga_ecm_ordi5, type="samples", color="treatment")
+fanga_ecm_ordi6 <- ordinate(fanga_ecm, method = "NMDS", dist="bray")
+plot_ordination(fanga_ecm, fanga_ecm_ordi6, type="samples", color="treatment")
+
+fanga_ecm_ordi_phyl1 <- ordinate(fanga_ecm, method = "MDS", dist="bray")
+plot_ordination(fanga_ecm, fanga_ecm_ordi_phyl1, type="taxa", color="Order", shape="Phylum")+
+  geom_point(size=2)+
+  # color and elipse
+  scale_color_manual(values =cols25(10))+
+  stat_ellipse(type="t", level=0.70)+
+  # legend
+  guides(color=guide_legend(title="position from CC"))+
+  ggtitle(label = "MDS of samples from Halasen_edge by year",subtitle = "abundance (bray-curtis distance)")
+
+fanga_ecm_ordi_phyl1 <- ordinate(fanga_ecm, method = "MDS", dist="bray")
+plot_ordination(fanga_ecm, fanga_ecm_ordi_phyl1, type="samples", color="sample_id", shape="treatment")+
+  geom_point(size=2)+
+  # color and elipse
+  scale_color_manual(values =cols25(55))+
+  stat_ellipse(type="t", level=0.70)+
+  # legend
+  guides(color=guide_legend(title="position from CC"))+
+  ggtitle(label = "MDS of samples from Halasen_edge by year",subtitle = "abundance (bray-curtis distance)")
 ```

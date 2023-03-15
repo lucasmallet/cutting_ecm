@@ -26,7 +26,7 @@ as_binary_otu_table <- function(physeq, min_number = 1) {
 
 clean_physeq <- function(physeq,
                          remove_empty_samples = TRUE,
-                         remove_empty_taxa = TRUE,
+                         remove_empty_taxa = T, clean_samples_names = TRUE,
                          clean_samples_names = TRUE,
                          silent = FALSE,
                          verbose = FALSE) {
@@ -94,11 +94,184 @@ clean_physeq <- function(physeq,
 
   return(new_physeq)
 }
+
+pairwise.adonis2 <- function(x, data, strata = NULL, nperm=999, ... ) {
+
+#describe parent call function 
+ststri <- ifelse(is.null(strata),'Null',strata)
+fostri <- as.character(x)
+#list to store results
+
+#copy model formula
+   x1 <- x
+# extract left hand side of formula
+  lhs <- x1[[2]]
+# extract factors on right hand side of formula 
+  rhs <- x1[[3]]
+# create model.frame matrix  
+  x1[[2]] <- NULL   
+  rhs.frame <- model.frame(x1, data, drop.unused.levels = TRUE) 
+
+# create unique pairwise combination of factors 
+  co <- combn(unique(as.character(rhs.frame[,1])),2)
+
+# create names vector   
+  nameres <- c('parent_call')
+  for (elem in 1:ncol(co)){
+  nameres <- c(nameres,paste(co[1,elem],co[2,elem],sep='_vs_'))
+  }
+#create results list  
+  res <- vector(mode="list", length=length(nameres))
+  names(res) <- nameres
+
+#add parent call to res 
+res['parent_call'] <- list(paste(fostri[2],fostri[1],fostri[3],', strata =',ststri, ', permutations',nperm ))
+
+  
+#start iteration trough pairwise combination of factors  
+ for(elem in 1:ncol(co)){
+
+#reduce model elements  
+	if(inherits(eval(lhs),'dist')){	
+	    xred <- as.dist(as.matrix(eval(lhs))[rhs.frame[,1] %in% c(co[1,elem],co[2,elem]),
+		rhs.frame[,1] %in% c(co[1,elem],co[2,elem])])
+	}else{
+	xred <- eval(lhs)[rhs.frame[,1] %in% c(co[1,elem],co[2,elem]),]
+	}
+	
+	mdat1 <-  data[rhs.frame[,1] %in% c(co[1,elem],co[2,elem]),] 
+
+# redefine formula
+	if(length(rhs) == 1){
+		xnew <- as.formula(paste('xred',as.character(rhs),sep='~'))	
+		}else{
+		xnew <- as.formula(paste('xred' , 
+					paste(rhs[-1],collapse= as.character(rhs[1])),
+					sep='~'))}
+					
+#pass new formula to adonis
+	if(is.null(strata)){
+	ad <- adonis2(xnew,data=mdat1, ... )
+	}else{
+	perm <- how(nperm = nperm)
+    setBlocks(perm) <- with(mdat1, mdat1[,ststri])
+    ad <- adonis2(xnew,data=mdat1,permutations = perm, ... )}
+	
+  res[nameres[elem+1]] <- list(ad[1:5])
+  }
+  #names(res) <- names  
+  class(res) <- c("pwadstrata", "list")
+  return(res)
+} 
+
+plot_pie<-function(physeq, title.,condition,COL.TAXO. = COL.TAXO){
+  # Extract sample data.frame and merge with taxonomy information
+  # The resulting data.frame is decomposed to have a
+  df<-psmelt(physeq)
+
+  inner_tax<-aggregate(Abundance ~ Phylum+Description, data=df,sum,simplify=T)
+  outer_tax<-aggregate(Abundance ~ Class+Description, data=df,sum,simplify=T)
+
+  plot_pie_vector(subset(inner_tax,Description==condition, select = "Abundance",drop= TRUE),
+                  subset(outer_tax,Description==condition, select = "Abundance",drop= TRUE),
+                  title = title.,
+                  COL.TAXO = COL.TAXO., EDG = 200)
+  list_taxa<-list(
+    inner=subset(inner_tax,Description==condition, select = 1,drop= TRUE),
+    outer=subset(outer_tax,Description==condition, select = 1,drop= TRUE))
+  return(list_taxa)
+}
+
+ggrare <- function(physeq_object, step = 10, label = NULL, color = NULL, plot = TRUE, parallel = FALSE, se = TRUE) {
+
+  x <- methods::as(phyloseq::otu_table(physeq_object), "matrix")
+  if (phyloseq::taxa_are_rows(physeq_object)) { x <- t(x) }
+
+  ## This script is adapted from vegan `rarecurve` function
+  tot <- rowSums(x)
+  S <- rowSums(x > 0)
+  nr <- nrow(x)
+
+  rarefun <- function(i) {
+    cat(paste("rarefying sample", rownames(x)[i]), sep = "\n")
+    n <- seq(1, tot[i], by = step)
+    if (n[length(n)] != tot[i]) {
+      n <- c(n, tot[i])
+    }
+    y <- vegan::rarefy(x[i, ,drop = FALSE], n, se = se)
+    if (nrow(y) != 1) {
+      rownames(y) <- c(".S", ".se")
+      return(data.frame(t(y), Size = n, Sample = rownames(x)[i]))
+    } else {
+      return(data.frame(.S = y[1, ], Size = n, Sample = rownames(x)[i]))
+    }
+  }
+  if (parallel) {
+    out <- parallel::mclapply(seq_len(nr), rarefun, mc.preschedule = FALSE)
+  } else {
+    out <- lapply(seq_len(nr), rarefun)
+  }
+  df <- do.call(rbind, out)
+
+  # Get sample data
+  if (!is.null(phyloseq::sample_data(physeq_object, FALSE))) {
+    sdf <- methods::as(phyloseq::sample_data(physeq_object), "data.frame")
+    sdf$Sample <- rownames(sdf)
+    data <- merge(df, sdf, by = "Sample")
+    labels <- data.frame(x = tot, y = S, Sample = rownames(x))
+    labels <- merge(labels, sdf, by = "Sample")
+  }
+
+  # Add, any custom-supplied plot-mapped variables
+  if ( length(color) > 1 ) {
+    data$color <- color
+    names(data)[names(data) == "color"] <- deparse(substitute(color))
+    color <- deparse(substitute(color))
+  }
+
+  if ( length(label) > 1 ) {
+    labels$label <- label
+    names(labels)[names(labels) == "label"] <- deparse(substitute(label))
+    label <- deparse(substitute(label))
+  }
+
+  p <- ggplot2::ggplot(data = data,
+                       ggplot2::aes_string(x = "Size",
+                                           y = ".S",
+                                           group = "Sample",
+                                           color = color))
+
+  p <- p + ggplot2::labs(x = "Sequence Sample Size (Nb of reads)", y = "Number of ASV/OTU occurence")
+
+  if (!is.null(label)) {
+    p <- p + ggplot2::geom_text(data = labels,
+                                ggplot2::aes_string(x = "x",
+                                                    y = "y",
+                                                    label = label,
+                                                    color = color),
+                       size = 4, hjust = 0)
+  }
+
+  p <- p + ggplot2::geom_line()
+  if (se) { ## add standard error if available
+    p <- p +
+      ggplot2::geom_ribbon(ggplot2::aes_string(ymin = ".S - .se",
+                                               ymax = ".S + .se",
+                                               color = NULL,
+                                               fill = color),
+                           alpha = 0.2)
+  }
+  if (plot) {
+    plot(p)
+  }
+  invisible(p)
+}
 ```
 
 ```{r importation}
 # tax-eco table 
 ## only ECM and saprotrophs
+setwd("H:/REDACTION/RESULTS/cutting_ecm/TRANSF_DATA2")
 taxeco <- read.table("tax_table.txt",header=T,sep="\t") # change #N/A in excel in NA
 length(taxeco)
 taxeco[,c(3:length(taxeco))] <- lapply(taxeco[,c(3:length(taxeco))], as.factor) 
@@ -192,40 +365,44 @@ sample_names(physeq) # missing the controls and negatives
 ```{r physeq susbsets}
 # subsetting based on sites and guilds 
 ecm_phy <- subset_taxa(physeq, primary_lifestyle=="ectomycorrhizal") 
+ecm_phy <- subset_samples(ecm_phy, site=!"control") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
 sapr_phy <- subset_taxa(physeq, primary_lifestyle!="ectomycorrhizal")
 
-fanga <- subset_samples(physeq, physeq@sam_data$site=="Fangamon") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
-hala <- subset_samples(physeq, physeq@sam_data$site=="Halasen") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
-hala5 <- subset_samples(physeq, physeq@sam_data$site=="Halasen_p_5") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
+fanga <- subset_samples(physeq, physeq@sam_data$site=="Fangamon") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
+hala <- subset_samples(physeq, physeq@sam_data$site=="Halasen") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
+hala5 <- subset_samples(physeq, physeq@sam_data$site=="Halasen_p_5") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
   
-ecm_fanga <- subset_samples(ecm_phy, ecm_phy@sam_data$site=="Fangamon") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
-ecm_hala <- subset_samples(ecm_phy, ecm_phy@sam_data$site=="Halasen") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
-ecm_hala5 <- subset_samples(ecm_phy, ecm_phy@sam_data$site=="Halasen_p_5") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
+fanga_ecm <- subset_samples(ecm_phy, ecm_phy@sam_data$site=="Fangamon") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
+hala_ecm <- subset_samples(ecm_phy, ecm_phy@sam_data$site=="Halasen") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
+hala5_ecm <- subset_samples(ecm_phy, ecm_phy@sam_data$site=="Halasen_p_5") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
 
-sapr_fanga <- subset_samples(sapr_phy, sapr_phy@sam_data$site=="Fangamon") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
-sapr_hala <- subset_samples(sapr_phy, sapr_phy@sam_data$site=="Halasen") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
-sapr_hala5 <- subset_samples(sapr_phy, sapr_phy@sam_data$site=="Halasen_p_5") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
+fanga_sapr <- subset_samples(sapr_phy, sapr_phy@sam_data$site=="Fangamon") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
+hala_sapr <- subset_samples(sapr_phy, sapr_phy@sam_data$site=="Halasen") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
+hala5_sapr <- subset_samples(sapr_phy, sapr_phy@sam_data$site=="Halasen_p_5") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
 
 # abundance -> boolean
-ecm_fanga_pa <- as_binary_otu_table(ecm_fanga) %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
-ecm_hala_pa <- as_binary_otu_table(ecm_hala) %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T) 
-ecm_hala5_pa <- as_binary_otu_table(ecm_hala5) %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
+fanga_ecm_pa <- as_binary_otu_table(fanga_ecm) %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
+hala_ecm_pa <- as_binary_otu_table(hala_ecm) %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T) 
+hala5_ecm_pa <- as_binary_otu_table(hala5_ecm) %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
 
-sapr_fanga_pa <- as_binary_otu_table(sapr_fanga) %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
-sapr_hala_pa <- as_binary_otu_table(sapr_hala) %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
-sapr_hala5_pa <- as_binary_otu_table(sapr_hala5) %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
+fanga_sapr_pa <- as_binary_otu_table(fanga_sapr) %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
+hala_sapr_pa <- as_binary_otu_table(hala_sapr) %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
+hala5_sapr_pa <- as_binary_otu_table(hala5_sapr) %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
 ```
 
 ```{r transfo variables}
 fanga_sam <- lapply(fanga@sam_data, as.factor) %>% as.data.frame()
 hala_sam <- lapply(hala@sam_data, as.factor) %>% as.data.frame()
 hala5_sam <- lapply(hala5@sam_data, as.factor) %>% as.data.frame()
+
+sample_data(fanga_ecm)$year_factor <- as.factor(sample_data(fanga_ecm)$year)
+sample_data(hala_ecm)$year_factor <- as.factor(sample_data(hala_ecm)$year)
 ```
 
-
-
-
-
-
-
+```{r matrix simple otu-sam}
+fanga_ecm_samotu <- data.frame(fanga_ecm@sam_data,t(fanga_ecm@otu_table)) 
+hala_ecm_samotu <- data.frame(hala_ecm@sam_data,t(hala_ecm@otu_table))
+hala_ecm_samotu <- lapply(hala_ecm_samotu[,1:10], as.factor) %>% as.data.frame()
+hala5_ecm_samotu <- data.frame(hala5_ecm@sam_data,t(hala5_ecm@otu_table))
+```
 
