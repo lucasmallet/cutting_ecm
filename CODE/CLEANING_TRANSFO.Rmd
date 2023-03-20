@@ -24,8 +24,8 @@ library(MiscMetabar)
 library(circlize)
 library(ggVennDiagram)
 library(phyloseq.extended)
-
 library (microbiomeutilities)
+library("multcompView")
 ```
 
 ```{r functions}
@@ -298,7 +298,7 @@ hala_ecm_samotu <- data.frame(hala_ecm@sam_data,t(hala_ecm@otu_table))
 
 hala_ecm_sam_df <- lapply(hala_ecm_samotu[,1:9], as.factor) %>% as.data.frame()
 hala_ecm_otu_df <- lapply(hala_ecm_samotu[,10:length(hala_ecm_samotu)], as.numeric) %>% as.data.frame() 
-hala_ecm_samotu <- cbind(hala_ecm_samotu_fact,hala_ecm_otu_df)
+hala_ecm_samotu <- cbind(hala_ecm_sam_df,hala_ecm_otu_df)
 
 hala5_ecm_samotu <- data.frame(hala5_ecm@sam_data,t(hala5_ecm@otu_table))
 ```
@@ -340,4 +340,25 @@ hala_ecm@sam_data$specification <- plyr::revalue(hala_ecm@sam_data$specification
                            c("middle"="CC_middle", 
                              "edge"="CC_edge"))
 as.factor(hala_ecm@sam_data$specification) %>% droplevels() %>% levels()
+
+# also for the transposed physeq object 
+hala_ecm_t@sam_data$specification <- plyr::revalue(hala_ecm_t@sam_data$specification,
+                           c("edge_north"="edge", 
+                             "edge_south"="edge",
+                             "kant_norra"="edge", 
+                             "middle_lower"="middle", 
+                             "middle_upper"="middle",
+                             "midle"="middle"))
+as.factor(hala_ecm_t@sam_data$specification) %>% droplevels() %>% levels()
+
+hala_ecm_t@sam_data <- within(hala_ecm_t@sam_data, specification[specification=="middle" & treatment=="forest"] <- "FOR_middle") 
+
+hala_ecm_t@sam_data$specification <- plyr::revalue(hala_ecm_t@sam_data$specification,
+                           c("middle"="CC_middle", 
+                             "edge"="CC_edge"))
+as.factor(hala_ecm_t@sam_data$specification) %>% droplevels() %>% levels()
 ```
+
+
+
+
