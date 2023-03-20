@@ -320,7 +320,7 @@ fanga_ecm_tax <- fanga_ecm@tax_table
 fanga_ecm_t <- phyloseq(fanga_ecm_otu_t,fanga_ecm_sam,fanga_ecm_tax)
 
 ```
-q
+
 ```{r pattern with edges: transforming data}
 print(hala_ecm@sam_data)
 factor(hala_ecm@sam_data$specification) %>% levels()
