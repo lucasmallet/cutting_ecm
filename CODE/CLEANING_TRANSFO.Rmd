@@ -302,7 +302,7 @@ hala_ecm_samotu <- cbind(hala_ecm_samotu_fact,hala_ecm_otu_df)
 
 hala5_ecm_samotu <- data.frame(hala5_ecm@sam_data,t(hala5_ecm@otu_table))
 ```
-
+wqe
 ```{r transposing otu table in physq object for hill_pq}
 hala_ecm_otu_t <- t(hala_ecm@otu_table)
 hala_ecm_sam <- hala_ecm@sam_data
