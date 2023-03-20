@@ -3,6 +3,13 @@ title: "PRELIMINARY_RESULTS"
 output: html_document
 date: "2023-03-08"
 ---
+
+```{r KNITR global options: TO DO NOT INCLUDE}
+#| include = F
+ 
+knitr::opts_chunk$set(echo = F, include = F)
+```
+
 controls: 
 alt+o = close all 
 shift+alt+o = open all
@@ -18,6 +25,8 @@ for ggplot: position = fill -> relative abundance
 - permanova/adonis
 - additional arguments (cf. transparency in others function inside circle_pq)
 - commenting ##
+- synthetic tab for MM 
+- ID the missing samples (and create a design table)
 
 # *1 LIBRARIES - PALETTES* 
 ```{r libraries}
@@ -30,7 +39,7 @@ factor(list_mm)
 ## to see all functions from a package
 
 # circles physeq
-circle_pq(ecm_phy, "site", taxa = "Phylum", add_nb_seq = F,
+circle_allsite_genus <- circle_pq(ecm_phy, "site", taxa = "Phylum", add_nb_seq = F,
           grid_col = "darkgrey",
           row_col = c("darkred","#1F78B4","darkgreen"))
 
@@ -58,13 +67,23 @@ circle_pq(ecm_phy, "site", taxa = "Phylum", add_nb_seq = F,
           grid_col = "darkgrey",
           row_col = c("darkred","#1F78B4","darkgreen"))
 
-read_distrib <- plot_read_distribution(ecm_phy, groups = "site", 
-                                       plot.type = "density")
-read_distrib
+read_distrib <- plot_read_distribution(
+  ecm_phy, groups = "site", 
+  plot.type = "density")+
+  xlab("Reads per site")+
+  ggtitle("Distribution of the number of reads per site")
 
 # rarecurve by samplings
-ecm_phy_rrcurve <- phyloseq.extended::ggrare(ecm_phy, step = 10, color = "year", label="sample_id",plot=F, se=T) 
-ecm_phy_rrcurve + facet_wrap(~site)
+ecm_phy_rrcurve <- phyloseq.extended::ggrare(physeq = ecm_phy, 
+                                             step = 10, 
+                                             color = "year", 
+                                             label="sample_id",
+                                             plot=F, 
+                                             se=T)+ 
+  facet_wrap(~site)+
+  ggtitle("Rarefaction curves of samples per site")+
+  xlab("Number of reads")+
+  ylab("OTU richness")
 
 # rarecurve by groups (and confidence interval)
 ecm_phy_rrcurve_group <- microbiomeutilities::plot_alpha_rcurve(ecm_phy, index="observed", 
@@ -115,7 +134,7 @@ hala_rrcurve_groups <- microbiomeutilities::plot_alpha_rcurve(hala_ecm, index="o
 hala_rrcurve_groups
 ```
 ```{r circle graph: genus distribution among treatments}
-circle_hala_ecm <- circle_pq(physeq = hala_ecm, 
+circle_pq(physeq = hala_ecm, 
                               fact = "specification", 
                               taxa = "Genus", 
                               min_prop_mod=0.001,
@@ -123,12 +142,11 @@ circle_hala_ecm <- circle_pq(physeq = hala_ecm,
                               row_col = c("red","orange","darkgreen"),
                               grid_col= 1,
                               add_nb_seq = T)
-circle_hala_ecm
 ```
 ```{r hill - alpha index}
 
-hala_hill_treatment <- hill_pq(physeq=hala_ecm_t, variable = "specification", color_fac = NA, letters = T) 
-hala_hill_treatment[[1]]+ 
+hala_hill_treatment <- hill_pq(physeq = hala_ecm_t, variable = "specification", color_fac = NA, letters = T) 
+hala_hill0 <- hala_hill_treatment[[1]]+ 
   labs(title="Hill 0 : position from CC", subtitle="Hagadalen_edge")+
   coord_cartesian(xlim=c(0,16))+
   scale_x_continuous(name="Hill_0", breaks=seq(0,16,by=2))+
@@ -437,3 +455,35 @@ plot_ordination(fanga_ecm, fanga_ecm_ordi_phyl1, type="samples", color="sample_i
   guides(color=guide_legend(title="position from CC"))+
   ggtitle(label = "MDS of samples from Halasen_edge by year",subtitle = "abundance (bray-curtis distance)")
 ```
+
+
+# *6 PRES_RESULTS 200323*
+```{r SAMPLES SUPPRESSED}
+miss_sam_clust_ecm$sample_id # total excluded
+print(miss_sam_clust_ctrl) 
+# every control and NA suppressed (ie 0 occurence) 
+## 8 PCR neg => good control,
+### what about ITS standard ? and Q ? 
+print(miss_sam_clust_hala) 
+print(miss_sam_clust_hala5)
+print(miss_sam_clust_fanga)
+### samples with 0 values... real absence or methods pb? to consider into study? 
+```
+
+```{r overview sites}
+circle_pq(ecm_phy, "site", taxa = "Phylum", add_nb_seq = F,
+          grid_col = "darkgrey",
+          row_col = c("darkred","#1F78B4","darkgreen"))
+
+read_distrib # density plot of nb of reads per site 
+hist_cluster_size # distribution of the cluster size among ECM OTUs
+ecm_phy_rrcurve # rarefaction curve for samples per site
+sac_f_raw # cluster size accumulation curve from all fungi clusters
+```
+
+# specific results
+```{r hala}
+
+```
+
+

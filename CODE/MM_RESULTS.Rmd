@@ -93,10 +93,10 @@ summary(ecm$Cluster_Size)
 hist_cluster_size <- ggplot(ecm, 
        aes(x=Cluster_Size))+
 geom_histogram(bins=20,breaks=seq(12,2985 ,by=100),color="black", fill="darkseagreen")+
-  scale_y_continuous(name="")+
-  scale_x_continuous(name="", breaks=seq(12,2985 ,by=100))+
+  scale_y_continuous(name="number of clusters")+
+  scale_x_continuous(name="number of reads", breaks=seq(12,2985 ,by=100))+
   theme(axis.text.x=element_text(color="coral4", size=8, angle=60))+
-  ggtitle("") 
+  ggtitle("Distribution of the cluster size for ECM OTUs") 
 
 hist_cluster_size
 ```
@@ -106,9 +106,13 @@ sac_f_raw <- ggplot(raw_f_clust, aes(x=c(1:3968),y=cumsum(Cluster_Size)))+   geo
   coord_cartesian(xlim=c(0,3968),ylim=c(0,244367))+
   scale_y_continuous(name="cumulative cluster size", breaks=seq(0,244367,by=25000))+
   scale_x_continuous(name="number of cluster", breaks=seq(0,3968 ,by=200))+
+  geom_vline(xintercept=1000,lwd=0.6,colour="red",)+ 
+  annotate("text", x = 1050, y = 25000, label="1000 first clusters conserved", size = 4, angle=0, color = "red", hjust = 0)+
+  annotate("text", x= 1050, y= 15000, label="93.65% of total reads", size = 4, angle=0, color = "red", hjust = 0)+
   theme(axis.text.x=element_text(color="coral4", size=8, angle=60))+
-  ggtitle("cumulative curve of all clusters") 
+  ggtitle("Cumulative cluster size curve from all fungi clusters") 
 
+?hjust
 sac_f_raw
 
 length(raw_f_clust$Cluster_ID)
@@ -116,5 +120,60 @@ read_1000 <- sum(raw_f_clust[c(1:1000),2]); read_1000
 read_3968 <- sum(raw_f_clust[c(1001:3968),2]); read_3968
 read_total <- sum(raw_f_clust[,2])
 pourc_read_kept <- read_1000/read_total*100; pourc_read_kept
+```
+
+```{r missing samples}
+# considering physeq objects (ecm_phy,hala_ecm, hala5_ecm, fanga_ecm have been cleaned (sample supress if 0) by clean_pq() )
+colnames(hala_sam)
+summary(hala_sam[,c(2,5:8)])
+table(hala_sam$plot,hala_sam$treatment)
+
+# for ecm-sapr
+summary(sam$sample_id)
+summary(physeq@sam_data$sample_id)
+miss_sam_clust_ecmsapr <- anti_join(x = sam, y = physeq@sam_data) # return all rows from x without a match in y.
+miss_sam_clust_ecmsapr$sample_id # samples deleted after bioinformatic processes (scata, first 1000s clusters, ecm-sapr guilds)
+
+# for ecm only
+summary(sam$sample_id)
+summary(ecm_phy@sam_data$sample_id)
+miss_sam_clust_ecm <- anti_join(x = sam, y = ecm_phy@sam_data)
+miss_sam_clust_ecm$sample_id
+# 8 PCR neg => good control,
+# what about ITS standard ?
+
+clipr::write_clip(miss_sam_clust_ecm$sample_id) # to copy dataframe or vector
+# controls and na 
+miss_sam_clust_ctrl <- anti_join(x = sam_controls_na, y = ecm_phy@sam_data)
+miss_sam_clust_ctrl$sample_id
+
+length(miss_sam_clust_ctrl$sample_id)
+length(row.names(sam_controls_na)) # every control and NA are suppressed from the dataset (because 0 occurence of clusters)
+
+# hala
+miss_sam_clust_hala <- anti_join(x = sam_hala[,1:7], y = hala_ecm@sam_data[,1:7]) # exclude specification column because we changed factor values for this column
+miss_sam_clust_hala$sample_id
+
+# hala5
+miss_sam_clust_hala5 <- anti_join(x = sam_hala5, y = hala5_ecm@sam_data)
+miss_sam_clust_hala5$sample_id
+
+# fanga
+miss_sam_clust_fanga <- anti_join(x = sam_fanga, y = fanga_ecm@sam_data)
+miss_sam_clust_fanga$sample_id
+
+# check if count is good (total missing samples VS sum of missing samples per site)
+length(miss_sam_clust_ecm$sample_id)/(length(miss_sam_clust_hala$sample_id)+length(miss_sam_clust_hala5$sample_id)+length(miss_sam_clust_fanga$sample_id)+length(miss_sam_clust_ctrl$sample_id)) 
+# =1 -> all good 
+
+length(miss_sam_clust_ecm$sample_id) # total 
+length(miss_sam_clust_ctrl$sample_id)
+length(miss_sam_clust_hala$sample_id)
+length(miss_sam_clust_hala5$sample_id)
+length(miss_sam_clust_fanga$sample_id)
+
+length(rownames(sam_hala))
+length(rownames(sam_hala5))
+length(rownames(sam_fanga))
 ```
 

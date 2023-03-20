@@ -1,0 +1,54 @@
+---
+title: "pres-200323"
+output: html_document
+date: "2023-03-20"
+---
+
+```{r KNITR global options START}
+#| include = T
+ 
+knitr::opts_chunk$set(echo = T)
+```
+
+```{r X calcul}
+x=5+3
+x2=20
+```
+
+```{r show x }
+print(x)
+```
+
+```{r show x2}
+print(x2)
+```
+
+
+```{r test not to be include}
+#| include = F,
+#| echo = F
+
+
+y=5*96 
+```
+
+```{r to include ALL}
+#| include = T,
+#| echo = T
+
+print(y)
+```
+
+
+```{r KNITR global options END}
+#| include = F
+ 
+knitr::opts_chunk$set(echo = F, include = F)
+```
+
+```{r to test global options}
+print(y)
+print(x*y)
+print(x+y^2)
+```
+# NOT INCLUDED = perfect 

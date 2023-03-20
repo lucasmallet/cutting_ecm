@@ -221,3 +221,10 @@ carabids3[,6] # same as [[]]
 carabids3[c(1:5),6]
 ```
 
+```{r}
+list_mm <- lsf.str("package:base") 
+factor(list_mm)
+## to see all functions from a package
+```
+
+

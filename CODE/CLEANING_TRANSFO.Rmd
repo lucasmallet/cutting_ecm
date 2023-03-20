@@ -182,6 +182,11 @@ sam[sam==""] <- NA # filling the blanck by NAs
 length(sam)
 rownames(sam) <- sam$sample_id # after transposing, resolving pb with headers
 
+# subsetting design samples per site 
+sam_hala <- subset(sam, sam$site == "Halasen")
+sam_hala5 <- subset(sam, sam$site == "Halasen_p_5")
+sam_fanga <- subset(sam, sam$site == "Fangamon")
+sam_controls_na <- filter(sam, !site %in% c("Halasen","Halasen_p_5","Fangamon"))
 # subset guilds (saprotroph - ectomycorrizal)
 ecm <- subset(taxeco,taxeco$primary_lifestyle=="ectomycorrhizal") %>% arrange(desc(Cluster_Size))
 sapr <- subset(taxeco,taxeco$primary_lifestyle!="ectomycorrhizal")
