@@ -115,7 +115,6 @@ sac_f_raw <- ggplot(raw_f_clust, aes(x=c(1:3968),y=cumsum(Cluster_Size)))+   geo
 ?hjust
 sac_f_raw
 
-length(raw_f_clust$Cluster_ID)
 read_1000 <- sum(raw_f_clust[c(1:1000),2]); read_1000
 read_3968 <- sum(raw_f_clust[c(1001:3968),2]); read_3968
 read_total <- sum(raw_f_clust[,2])

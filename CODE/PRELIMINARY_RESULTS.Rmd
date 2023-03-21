@@ -145,7 +145,11 @@ circle_pq(physeq = hala_ecm,
                               add_nb_seq = T)
 ```
 ```{r hill - alpha index}
-hala_hill_treatment <- hill_pq(physeq = hala_ecm_t, variable = "specification", color_fac = NA, letters = T) 
+hala_hill_treatment <- hill_pq(physeq = hala_ecm_t, 
+                               variable = "specification",
+                               color_fac = NA, 
+                               letters = F) 
+
 hala_hill0 <- hala_hill_treatment[[1]]+ 
   labs(title="Hill 0 : position from CC", subtitle="Hagadalen_edge")+
   coord_cartesian(xlim=c(0,16))+
@@ -153,6 +157,7 @@ hala_hill0 <- hala_hill_treatment[[1]]+
   scale_y_continuous(name="Position from CC", breaks=c(1,2,3))+
   
   theme(axis.text.x=element_text(color="coral4", size=8, angle=0))
+hala_hill0
 
 hala_hill1 <- hala_hill_treatment[[2]]+ 
   labs(title="Hill 1 : position from CC", subtitle="Hagadalen_edge")+
@@ -183,6 +188,7 @@ hala_ecm_ggplot1 <- ggplot(hala_ecm_ggplot1$data, aes(fill= fct_reorder(as.facto
   xlab("position from CC")+
   guides(fill=guide_legend(title="Genus"))+
   theme(axis.text.x=element_text(color="coral4", size=8, angle=20))
+hala_ecm_ggplot1
 
 # OTU Genus abundance by treatment
 hala_ecm_ggplot2 <- phyloseq::plot_bar(hala_ecm, x = "specification") 
@@ -375,7 +381,7 @@ as.factor(fanga_ecm@tax_table[,5]) %>% droplevels() %>% levels()
 genus_nb_fanga <- as.factor(fanga_ecm@tax_table[,5]) %>% droplevels() %>% levels() %>% length() # 16 genus
 ```
 
-### 5.2.1 bivariate analysis
+## 5.2.1 bivariate analysis
 ```{r rarecurve}
 fanga_rrcurve <- phyloseq.extended::ggrare(fanga_ecm, step = 10, color = "treatment", label="sample_id",plot=F, se=T)  + facet_wrap(~year)
 fanga_rrcurve
@@ -391,7 +397,6 @@ fanga_rrcurve_groups <- microbiomeutilities::plot_alpha_rcurve(fanga_ecm, index=
                        type = "CI") # no min depth of 2 reads/sample (cf 1% relative keep)
 fanga_rrcurve_groups
 ```
-
 ```{r circle graph: genus distribution among treatments}
 circle_fanga_ecm <- circle_pq(physeq = fanga_ecm, 
                               fact = "treatment", 
@@ -424,14 +429,18 @@ fanga_ecm_ggplot2 <- ggplot(fanga_ecm_ggplot2$data, aes(fill= fct_reorder(as.fac
 # position = fill -> relative abundance 
 ```
 ```{r hill fanga}
-fanga_hill_treatment <- hill_pq(physeq = fanga_ecm_t, variable = "treatment", color_fac = NA, letters = T) 
+fanga_hill_treatment <- hill_pq(physeq = fanga_ecm_t,
+                                variable = "treatment", 
+                                color_fac = NA, 
+                                letters = F) 
+
 fanga_hill0 <- fanga_hill_treatment[[1]]+ 
   labs(title="Hill 0 : treatment", subtitle="Fangamon")+
   coord_cartesian(xlim=c(0,16))+
   scale_x_continuous(name="Hill_0", breaks=seq(0,16,by=2))+
   scale_y_continuous(name="treatment", breaks=c(1,2,3))+
-  
   theme(axis.text.x=element_text(color="coral4", size=8, angle=0))
+fanga_hill0
 
 fanga_hill1 <- fanga_hill_treatment[[2]]+ 
   labs(title="Hill 1 : treatment", subtitle="Fangamon")+
@@ -450,7 +459,6 @@ fanga_hill2 <- fanga_hill_treatment[[3]]+
 fanga_hill_treatment[[4]]
 fanga_hill_treatment[[4]] # TukeyHSD test
 ```
-
 ```{r trying understand difference between boolean and relative abundance}
 fanga_ecm_only_cc <- subset_samples(fanga_ecm, fanga_ecm@sam_data$treatment=="clearcut") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
 
@@ -458,7 +466,6 @@ print(fanga_ecm_only_cc@otu_table)
 which(fanga_ecm_only_cc@otu_table>200,arr.ind = T) %>% rownames() 
 fanga_ecm_only_cc@tax_table[c("c10", "c21"),6] # 2 super abundant species 
 ```
-
 ```{r maybe a contamination for a sample?}
 fanga_ecm_only_cc_2012 <- subset_samples(fanga_ecm, fanga_ecm@sam_data$year=="2012" & fanga_ecm@sam_data$treatment=="clearcut") %>% clean_physeq(remove_empty_samples = T,remove_empty_taxa = T)
 print(fanga_ecm_only_cc_2012@sam_data)
@@ -482,7 +489,7 @@ ggplot(fanga_ecm_ggplot2$data, aes(fill= fct_reorder(as.factor(Genus), Abundance
   labs(title="", subtitle="")  
 ```
 
-### 5.2.2 multivariate analysis
+## 5.2.2 multivariate analysis
 ```{r plotting tests}
 fanga_ecm_ordi_mdsjacc <- ordinate(as_binary_otu_table(fanga_ecm), method = "MDS", dist="jaccard")
 fanga_ecm_ordi_mdsjacc <- plot_ordination(fanga_ecm, fanga_ecm_ordi_mdsjacc, type="samples", color="treatment",label="sample_id")+
