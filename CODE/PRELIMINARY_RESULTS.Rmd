@@ -117,10 +117,11 @@ ggvenn_pq(hala_ecm, fact="year", taxonomic_rank = "Genus")
 
 - change between 2012 2018 (see below) -> could be explained by a difference in the biomolecular methods ? we should not expect any difference in forest control treatment between years
 
-### 3.2.1 alpha
+## 3.2.1 alpha
 ```{r rarecurve}
-hala_rrcurve <- phyloseq.extended::ggrare(hala_ecm, step = 10, color = "specification", label="sample_id",plot=F, se=T) 
-hala_rrcurve + facet_wrap(~year)
+hala_rrcurve <- phyloseq.extended::ggrare(hala_ecm, step = 10, color = "specification", label="sample_id",plot=F, se=T)+ 
+  facet_wrap(~year)
+hala_rrcurve 
 ###
 hala_rrcurve_groups <- microbiomeutilities::plot_alpha_rcurve(hala_ecm, index="observed", 
                        subsamples = c(2,100,250,500,750,1000),
@@ -144,7 +145,6 @@ circle_pq(physeq = hala_ecm,
                               add_nb_seq = T)
 ```
 ```{r hill - alpha index}
-
 hala_hill_treatment <- hill_pq(physeq = hala_ecm_t, variable = "specification", color_fac = NA, letters = T) 
 hala_hill0 <- hala_hill_treatment[[1]]+ 
   labs(title="Hill 0 : position from CC", subtitle="Hagadalen_edge")+
@@ -154,15 +154,28 @@ hala_hill0 <- hala_hill_treatment[[1]]+
   
   theme(axis.text.x=element_text(color="coral4", size=8, angle=0))
 
-hala_hill_treatment[[2]]+ labs(title="Hill 1 : position from CC", subtitle="Hagadalen_edge")
-hala_hill_treatment[[3]]+ labs(title="Hill 2 : position from CC", subtitle="Hagadalen_edge")
+hala_hill1 <- hala_hill_treatment[[2]]+ 
+  labs(title="Hill 1 : position from CC", subtitle="Hagadalen_edge")+
+  coord_cartesian(xlim=c(0,12))+
+  scale_x_continuous(name="Hill_1", breaks=seq(0,12,by=2))+
+  scale_y_continuous(name="Position from CC", breaks=c(1,2,3))+
+  theme(axis.text.x=element_text(color="coral4", size=8, angle=0))
+
+hala_hill2 <- hala_hill_treatment[[3]]+ 
+  labs(title="Hill 2 : position from CC", subtitle="Hagadalen_edge")+
+  coord_cartesian(xlim=c(0,10))+
+  scale_x_continuous(name="Hill_2", breaks=seq(0,10,by=2))+
+  scale_y_continuous(name="Position from CC", breaks=c(1,2,3))+
+  theme(axis.text.x=element_text(color="coral4", size=8, angle=0))
+
+hala_hill_treatment[[4]]
 hala_hill_treatment[[4]] # TukeyHSD test
 
 ```
 ```{r barplot genus distribution}
 ## OTU Genus count (0;1) by treatment
 hala_ecm_ggplot1 <- phyloseq::plot_bar(as_binary_otu_table(hala_ecm), x = "specification") 
-ggplot(hala_ecm_ggplot3$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=specification, y = Abundance))+
+hala_ecm_ggplot1 <- ggplot(hala_ecm_ggplot1$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=specification, y = Abundance))+
   geom_bar(stat="identity", position = "stack") +
   scale_fill_manual(values = cols25(genus_nb_hala))+
   facet_grid(~year, scale="free")+
@@ -173,7 +186,7 @@ ggplot(hala_ecm_ggplot3$data, aes(fill= fct_reorder(as.factor(Genus), Abundance)
 
 # OTU Genus abundance by treatment
 hala_ecm_ggplot2 <- phyloseq::plot_bar(hala_ecm, x = "specification") 
-ggplot(hala_ecm_ggplot4$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=specification, y = Abundance))+
+hala_ecm_ggplot2 <- ggplot(hala_ecm_ggplot2$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=specification, y = Abundance))+
   geom_bar(stat="identity", position = "stack")+
   scale_fill_manual(values = cols25(genus_nb_hala))+
   facet_grid(~year, scale="free")+
@@ -181,14 +194,13 @@ ggplot(hala_ecm_ggplot4$data, aes(fill= fct_reorder(as.factor(Genus), Abundance)
   xlab("position from CC")+
   guides(fill=guide_legend(title="Genus"))+
   theme(axis.text.x=element_text(color="coral4", size=8, angle=20))
-
 ```
 
-### 3.2.2 multivariate analysis
+## 3.2.2 multivariate analysis
 ```{r multivariate representation}
 
 hala_ecm_ordi_mdsjacc <- ordinate(as_binary_otu_table(hala_ecm), method = "MDS", dist="jaccard")
-plot_ordination(hala_ecm, hala_ecm_ordi_mdsjacc, type="samples", color="specification",label="sample_id")+
+hala_ecm_ordi_mdsjacc <- plot_ordination(hala_ecm, hala_ecm_ordi_mdsjacc, type="samples", color="specification",label="sample_id")+
   geom_point(size=2)+
   facet_wrap(~year)+
   # color and elipse
@@ -199,7 +211,7 @@ plot_ordination(hala_ecm, hala_ecm_ordi_mdsjacc, type="samples", color="specific
   ggtitle(label = "MDS of samples from Halasen_edge by year", subtitle="presence-absence (jaccard distance)")
 
 hala_ecm_ordi_mdsbray <- ordinate(hala_ecm, method = "MDS", dist="bray")
-plot_ordination(hala_ecm, hala_ecm_ordi_mdsbray, type="samples", color="specification",label="sample_id")+
+hala_ecm_ordi_mdsbray <- plot_ordination(hala_ecm, hala_ecm_ordi_mdsbray, type="samples", color="specification",label="sample_id")+
   geom_point(size=2)+
   facet_wrap(~year)+
   # color and elipse
@@ -233,7 +245,7 @@ colnames(hala5_ecm@tax_table)
 as.factor(hala5_ecm@tax_table[,5]) %>% droplevels() %>% levels()
 genus_nb_hala5 <- as.factor(hala5_ecm@tax_table[,5]) %>% droplevels() %>% levels() %>% length() # 18 genus
 ```
-### 4.2.1 bivariate analysis
+## 4.2.1 bivariate analysis
 ```{r rarecurve}
 hala5_rrcurve <- phyloseq.extended::ggrare(hala5_ecm, step = 10, color = "treatment", label="sample_id",plot=F, se=T) 
 hala5_rrcurve
@@ -250,19 +262,19 @@ hala5_rrcurve_groups <- microbiomeutilities::plot_alpha_rcurve(hala5_ecm, index=
 hala5_rrcurve_groups
 ```
 ```{r circle graph: genus distribution among treatments}
-circle_hala5_ecm <- circle_pq(physeq = hala5_ecm, 
+circle_pq(physeq = hala5_ecm, 
                               fact = "treatment", 
                               taxa = "Genus", 
                               min_prop_mod=0.001,
-                              min_prop_tax=0.02,
-                              row_col = c("red","darkgreen","orange"),
+                              min_prop_tax=0.01,
+                              row_col = c("red","orange","darkgreen"),
                               grid_col= 1,
-                              add_nb_seq = T)
+                              add_nb_seq = T) # distribution circle sample - taxonomy 
 circle_hala5_ecm
 ```
 ```{r plotting tests}
 hala5_ecm_ggplot1 <- phyloseq::plot_bar(as_binary_otu_table(hala5_ecm), x = "treatment") 
-ggplot(hala5_ecm_ggplot1$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment, y = Abundance))+
+hala5_ecm_ggplot1 <- ggplot(hala5_ecm_ggplot1$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment, y = Abundance))+
   geom_bar(stat="identity", position = "stack") +
   scale_fill_manual(values = cols25(genus_nb_hala5))+
   facet_grid(~year, scale="free")+
@@ -270,18 +282,45 @@ ggplot(hala5_ecm_ggplot1$data, aes(fill= fct_reorder(as.factor(Genus), Abundance
   guides(fill=guide_legend(title="Genus"))
 
 hala5_ecm_ggplot2 <- phyloseq::plot_bar(hala5_ecm, x = "treatment") 
-ggplot(hala5_ecm_ggplot2$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment, y = Abundance))+
+hala5_ecm_ggplot2 <- ggplot(hala5_ecm_ggplot2$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment, y = Abundance))+
   geom_bar(stat="identity", position = "stack") +
   scale_fill_manual(values = cols25(genus_nb_hala5))+
   facet_grid(~year, scale="free")+
   labs(title="OTU Genus abundance by cutting treatment",subtitle = "Halasen_P5")+
   guides(fill=guide_legend(title="Genus"))
 ```
+```{r hill}
+hala5_hill_treatment <- hill_pq(physeq = hala5_ecm_t, variable = "treatment", color_fac = NA, letters = T) 
+hala5_hill0 <- hala5_hill_treatment[[1]]+ 
+  labs(title="Hill 0 : treatment", subtitle="Hagadalen5")+
+  coord_cartesian(xlim=c(0,16))+
+  scale_x_continuous(name="Hill_0", breaks=seq(0,16,by=2))+
+  scale_y_continuous(name="treatment", breaks=c(1,2,3))+
+  
+  theme(axis.text.x=element_text(color="coral4", size=8, angle=0))
 
-### 4.2.2 multivariate analysis
+hala5_hill1 <- hala5_hill_treatment[[2]]+ 
+  labs(title="Hill 1 : treatment", subtitle="Hagadalen5")+
+  coord_cartesian(xlim=c(0,12))+
+  scale_x_continuous(name="Hill_1", breaks=seq(0,12,by=2))+
+  scale_y_continuous(name="treatment", breaks=c(1,2,3))+
+  theme(axis.text.x=element_text(color="coral4", size=8, angle=0))
+
+hala5_hill2 <- hala5_hill_treatment[[3]]+ 
+  labs(title="Hill 2 : treatment", subtitle="Hagadalen5")+
+  coord_cartesian(xlim=c(0,10))+
+  scale_x_continuous(name="Hill_2", breaks=seq(0,10,by=2))+
+  scale_y_continuous(name="treatment", breaks=c(1,2,3))+
+  theme(axis.text.x=element_text(color="coral4", size=8, angle=0))
+
+hala5_hill_treatment[[4]]
+hala5_hill_treatment[[4]] # TukeyHSD test
+```
+
+## 4.2.2 multivariate analysis
 ```{r plotting tests}
-hala5_ecm_ordi1 <- ordinate(hala5_ecm, method = "MDS", dist="bray")
-plot_ordination(hala5_ecm, hala5_ecm_ordi1, type="samples", color="treatment",label="sample_id")+
+hala5_ecm_ordi_mdsjacc  <- ordinate(hala5_ecm, method = "MDS", dist="bray")
+hala5_ecm_ordi_mdsjacc  <- plot_ordination(hala5_ecm, hala5_ecm_ordi_mdsjacc, type="samples", color="treatment",label="sample_id")+
   geom_point(size=2)+
   # color and elipse
   scale_color_manual(values = c("red","orange","darkgreen"))+
@@ -290,8 +329,8 @@ plot_ordination(hala5_ecm, hala5_ecm_ordi1, type="samples", color="treatment",la
   guides(color=guide_legend(title="treatment"))+
   ggtitle(label = "MDS of samples from Halasen_5P",subtitle = "abundance")
 
-hala5_ecm_ordi1 <- ordinate(as_binary_otu_table(hala5_ecm), method = "MDS", dist="jaccard")
-plot_ordination(hala5_ecm, hala5_ecm_ordi1, type="samples", color="treatment",label="sample_id")+
+hala5_ecm_ordi_mdsbray  <- ordinate(as_binary_otu_table(hala5_ecm), method = "MDS", dist="jaccard")
+hala5_ecm_ordi_mdsbray  <-plot_ordination(hala5_ecm, hala5_ecm_ordi_mdsbray , type="samples", color="treatment",label="sample_id")+
   geom_point(size=2)+
   # color and elipse
   scale_color_manual(values = c("red","darkgreen","orange"))+
@@ -338,8 +377,8 @@ genus_nb_fanga <- as.factor(fanga_ecm@tax_table[,5]) %>% droplevels() %>% levels
 
 ### 5.2.1 bivariate analysis
 ```{r rarecurve}
-fanga_rrcurve <- phyloseq.extended::ggrare(fanga_ecm, step = 10, color = "treatment", label="sample_id",plot=F, se=T) 
-fanga_rrcurve + facet_wrap(~year)
+fanga_rrcurve <- phyloseq.extended::ggrare(fanga_ecm, step = 10, color = "treatment", label="sample_id",plot=F, se=T)  + facet_wrap(~year)
+fanga_rrcurve
 ###
 fanga_rrcurve_groups <- microbiomeutilities::plot_alpha_rcurve(fanga_ecm, index="observed", 
                        subsamples = c(2,100,250,500,750,1000),
@@ -365,7 +404,7 @@ circle_fanga_ecm <- circle_pq(physeq = fanga_ecm,
 ```
 ```{r plotting tests}
 fanga_ecm_ggplot1 <- phyloseq::plot_bar(as_binary_otu_table(fanga_ecm), x = "treatment") 
-ggplot(fanga_ecm_ggplot1$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment, y = Abundance))+
+fanga_ecm_ggplot1 <- ggplot(fanga_ecm_ggplot1$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment, y = Abundance))+
   geom_bar(stat="identity", position = "stack") +
   facet_grid(~year, scale="free")+
   scale_fill_manual(values = cols25(genus_nb_fanga))+
@@ -374,7 +413,7 @@ ggplot(fanga_ecm_ggplot1$data, aes(fill= fct_reorder(as.factor(Genus), Abundance
   guides(fill=guide_legend(title="Genus"))
 
 fanga_ecm_ggplot2 <- phyloseq::plot_bar(fanga_ecm, x = "treatment") 
-ggplot(fanga_ecm_ggplot2$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment, y = Abundance))+
+fanga_ecm_ggplot2 <- ggplot(fanga_ecm_ggplot2$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment, y = Abundance))+
   geom_bar(stat="identity", position = "stack") +
   facet_grid(~year, scale="free")+
   scale_fill_manual(values = cols25(genus_nb_fanga))+
@@ -383,6 +422,33 @@ ggplot(fanga_ecm_ggplot2$data, aes(fill= fct_reorder(as.factor(Genus), Abundance
   guides(fill=guide_legend(title="Genus"))
 
 # position = fill -> relative abundance 
+```
+```{r hill fanga}
+fanga_hill_treatment <- hill_pq(physeq = fanga_ecm_t, variable = "treatment", color_fac = NA, letters = T) 
+fanga_hill0 <- fanga_hill_treatment[[1]]+ 
+  labs(title="Hill 0 : treatment", subtitle="Fangamon")+
+  coord_cartesian(xlim=c(0,16))+
+  scale_x_continuous(name="Hill_0", breaks=seq(0,16,by=2))+
+  scale_y_continuous(name="treatment", breaks=c(1,2,3))+
+  
+  theme(axis.text.x=element_text(color="coral4", size=8, angle=0))
+
+fanga_hill1 <- fanga_hill_treatment[[2]]+ 
+  labs(title="Hill 1 : treatment", subtitle="Fangamon")+
+  coord_cartesian(xlim=c(0,12))+
+  scale_x_continuous(name="Hill_1", breaks=seq(0,12,by=2))+
+  scale_y_continuous(name="treatment", breaks=c(1,2,3))+
+  theme(axis.text.x=element_text(color="coral4", size=8, angle=0))
+
+fanga_hill2 <- fanga_hill_treatment[[3]]+ 
+  labs(title="Hill 2 : treatment", subtitle="Fangamon")+
+  coord_cartesian(xlim=c(0,10))+
+  scale_x_continuous(name="Hill_2", breaks=seq(0,10,by=2))+
+  scale_y_continuous(name="treatment", breaks=c(1,2,3))+
+  theme(axis.text.x=element_text(color="coral4", size=8, angle=0))
+
+fanga_hill_treatment[[4]]
+fanga_hill_treatment[[4]] # TukeyHSD test
 ```
 
 ```{r trying understand difference between boolean and relative abundance}
@@ -418,12 +484,27 @@ ggplot(fanga_ecm_ggplot2$data, aes(fill= fct_reorder(as.factor(Genus), Abundance
 
 ### 5.2.2 multivariate analysis
 ```{r plotting tests}
-fanga_ecm_ordi1 <- ordinate(as_binary_otu_table(fanga_ecm), method = "MDS", dist="jaccard")
-plot_ordination(fanga_ecm, fanga_ecm_ordi1, type="samples", color="treatment")
-fanga_ecm_ordi2 <- ordinate(fanga_ecm, method = "MDS", dist="bray")
-plot_ordination(fanga_ecm, fanga_ecm_ordi2, type="samples", color="treatment")
-fanga_ecm_ordi2b <- ordinate(fanga_ecm, method = "MDS", dist="bray")
-plot_ordination(fanga_ecm, fanga_ecm_ordi2b, type="samples", color="specification")
+fanga_ecm_ordi_mdsjacc <- ordinate(as_binary_otu_table(fanga_ecm), method = "MDS", dist="jaccard")
+fanga_ecm_ordi_mdsjacc <- plot_ordination(fanga_ecm, fanga_ecm_ordi_mdsjacc, type="samples", color="treatment",label="sample_id")+
+  geom_point(size=2)+
+  facet_wrap(~year)+
+  # color and elipse
+  scale_color_manual(values = c("red","darkgreen","orange","green3"))+
+  stat_ellipse(type="t", level=0.70)+
+  # legend
+  guides(color=guide_legend(title="position from CC"))+
+  ggtitle(label = "MDS of samples from fangamon by year", subtitle="presence-absence (jaccard distance)")
+
+fanga_ecm_ordi_mdsbray <- ordinate(fanga_ecm, method = "MDS", dist="bray")
+fanga_ecm_ordi_mdsbray <- plot_ordination(fanga_ecm, fanga_ecm_ordi_mdsbray, type="samples", color="treatment",label="sample_id")+
+  geom_point(size=2)+
+  facet_wrap(~year)+
+  # color and elipse
+  scale_color_manual(values = c("red","darkgreen","orange","green3"))+
+  stat_ellipse(type="t", level=0.70)+
+  # legend
+  guides(color=guide_legend(title="position from CC"))+
+  ggtitle(label = "MDS of samples from fangamon by year",subtitle = "abundance (bray-curtis distance)")
 
 fanga_ecm_ordi3 <- ordinate(as_binary_otu_table(fanga_ecm), method = "NMDS", dist="jaccard")
 plot_ordination(fanga_ecm, fanga_ecm_ordi3, type="samples", color="treatment")
@@ -464,12 +545,12 @@ print(miss_sam_clust_ctrl)
 # every control and NA suppressed (ie 0 occurence) 
 ## 8 PCR neg => good control,
 ### what about ITS standard ? and Q ? 
+### ITS probably allows us to see if amplification has been done right (for further comparisons)
 print(miss_sam_clust_hala) 
 print(miss_sam_clust_hala5)
 print(miss_sam_clust_fanga)
 ### samples with 0 values... real absence or methods pb? to consider into study? 
 ```
-
 ```{r overview sites}
 circle_pq(ecm_phy, "site", taxa = "Phylum", add_nb_seq = F,
           grid_col = "darkgrey",
@@ -480,10 +561,101 @@ hist_cluster_size # distribution of the cluster size among ECM OTUs
 ecm_phy_rrcurve # rarefaction curve for samples per site
 sac_f_raw # cluster size accumulation curve from all fungi clusters
 ```
+```{r hala edge}
+# design
+table(hala_sam$plot,hala_sam$treatment)
 
-# specific results
-```{r hala}
+# number of genus
+as.factor(hala_ecm@tax_table[,5]) %>% droplevels() %>% levels() 
+ggvenn_pq(hala_ecm, fact="year", taxonomic_rank = "Genus") # to be resolved -> but interesting figure
 
+hala_rrcurve # rarefaction curve for samples between 2012 and 2018
+circle_pq(physeq = hala_ecm, 
+                              fact = "specification", 
+                              taxa = "Genus", 
+                              min_prop_mod=0.001,
+                              min_prop_tax=0.01,
+                              row_col = c("red","orange","darkgreen"),
+                              grid_col= 1,
+                              add_nb_seq = T) # distribution circle sample - taxonomy 
+
+# hill numbers
+hala_hill0  # OTU richness
+hala_hill1 # ie shannon index
+hala_hill2 # ie simpson index
+hala_hill_treatment[[4]] # tukeyHSD test
+
+hala_ecm_ggplot1 # distribution genus (0;1)
+hala_ecm_ggplot2 # distribution genus (nb of reads)
+
+hala_ecm_ordi_mdsjacc # MDS jaccard (0;1)
+hala_ecm_ordi_mdsbray # MDS bray-curtis (nb of reads)
 ```
+```{r fangamon}
+# design
+table(fanga_sam$plot,fanga_sam$treatment)
 
+# number of genus
+as.factor(fanga_ecm@tax_table[,5]) %>% droplevels() %>% levels() 
 
+fanga_rrcurve # rarefaction curve for samples between 2012 and 2018
+circle_pq(physeq = fanga_ecm, 
+                              fact = "treatment", 
+                              taxa = "Genus", 
+                              min_prop_mod=0.001,
+                              min_prop_tax=0.01,
+                              row_col = c("red","darkgreen","orange","green3"),
+                              grid_col= 1,
+                              add_nb_seq = T) # distribution circle sample - taxonomy 
+
+# hill numbers
+fanga_hill0  # OTU richness # cc 2018 huge OTU richness for a single sample (can be seen also in distribution plots)
+fanga_hill1 # ie shannon index
+fanga_hill2 # ie simpson index
+fanga_hill_treatment[[4]] # tukeyHSD test
+
+fanga_ecm_ggplot1 # distribution genus (0;1)
+fanga_ecm_ggplot2 # distribution genus (nb of reads)
+
+# how to explained such results ? 
+## a few OTUs explain everything
+print(fanga_ecm_only_cc@otu_table)
+which(fanga_ecm_only_cc@otu_table>200,arr.ind = T) %>% rownames() 
+fanga_ecm_only_cc@tax_table[c("c10", "c21"),6] # 2 super abundant species 
+
+### seedlings in just one core sampling -> pooled with other => rise the abundance of whole sample 
+### affinity in the amplification ? maybe for c21 (only present in one sample) but not for c10 where it is more distributed and between 19 and 965 reads
+### not that meaningful -> shoudl check about qpcr to see real biological activity 
+
+fanga_ecm_ordi_mdsjacc # MDS jaccard (0;1)
+fanga_ecm_ordi_mdsbray # MDS bray-curtis (nb of reads)
+```
+```{r hala5}
+# design
+table(hala5_sam$plot,hala5_sam$treatment)
+
+# number of genus
+as.factor(hala5_ecm@tax_table[,5]) %>% droplevels() %>% levels() 
+
+hala5_rrcurve # rarefaction curve for samples
+circle_pq(physeq = hala5_ecm, 
+                              fact = "treatment", 
+                              taxa = "Genus", 
+                              min_prop_mod=0.001,
+                              min_prop_tax=0.01,
+                              row_col = c("red","orange","darkgreen"),
+                              grid_col= 1,
+                              add_nb_seq = T) # distribution circle sample - taxonomy 
+
+# hill numbers 
+hala5_hill0  # OTU richness
+hala5_hill1 # ie shannon index
+hala5_hill2 # ie simpson index
+hala5_hill_treatment[[4]] # tukeyHSD test
+
+hala5_ecm_ggplot1 # distribution genus (0;1)
+hala5_ecm_ggplot2 # distribution genus (nb of reads)
+
+hala5_ecm_ordi_mdsjacc # MDS jaccard (0;1)
+hala5_ecm_ordi_mdsbray # MDS bray-curtis (nb of reads)
+```
