@@ -3,137 +3,100 @@ title: "Prelim_results"
 output: html_document
 date: "2023-03-06"
 ---
-# install packages
-install.packages("devtools")
-devtools::install_github("adrientaudiere/MiscMetabar") -> a installer 
-devtools::install_github("jokergoo/circlize")
-
-#others libraries
-library(amplicon)
-library (iNEXT) # for rarefaction curves, but with a simple matrix
-library (MicrobiotaProcess)
-
+*LIBRARY*
 ```{r packages}
-library(ggplot2)
-library(dplyr)
-library(tidyverse)
-library(vegan)
-library(phyloseq)
-library(forcats)
-library(MiscMetabar)
-library(circlize)
-library(ggVennDiagram)
-library(phyloseq.extended)
-library (microbiomeutilities)
-library("multcompView")
+library(ggplot2) # Create Elegant Data Visualisations Using the Grammar of Graphics
+library(dplyr) # A Grammar of Data Manipulation
+library(tidyverse) # A Grammar of Data Manipulation
+library(vegan) # ecological statistical analysis
+library(phyloseq) # Handling and analysis of high-throughput microbiome census data 
+library(forcats) # Tools for Working with Categorical Variables
+library(MiscMetabar) # Analyze and visualize metabarcoding data
+library(circlize) # circular visualization
+library(ggVennDiagram) # venn diagrams 
+library(phyloseq.extended) # phyloseq packages with more options
+library (microbiomeutilities) # for rarefaction curves
+library("multcompView") # Visualizations of Paired Comparisons
 ```
-
-```{r importation}
-# tax-eco table 
-## only ECM and saprotrophs
-setwd("H:/REDACTION/RESULTS/cutting_ecm/TRANSF_DATA2")
+*DATA IMPORTATION AND MODIF* 
+```{r tax-eco table }
+# only the 1st 1000 clusters 
+setwd("H:/REDACTION/RESULTS/cutting_ecm/TRANSF_DATA2") 
 taxeco <- read.table("tax_table.txt",header=T,sep="\t") # change #N/A in excel in NA
-length(taxeco)
+length(taxeco) # number of columns 
+length(rownames(taxeco)) # number of rows (ie clusters, 1st 1000 fungi)
 taxeco[,c(3:length(taxeco))] <- lapply(taxeco[,c(3:length(taxeco))], as.factor) 
-rownames(taxeco) <- taxeco$Cluster_ID
+rownames(taxeco) <- taxeco$Cluster_ID # rownames of corresponding clusters
+taxeco1 <- subset(taxeco[,c(3:length(taxeco)),]) 
 
-# otu table
-otu <- read.table("otu_table.txt",header=F,sep="\t",na.strings = T) 
-otu = setNames(data.frame(t(otu[,-1])), otu[,1]) # transpose + 1st column (ie samples set as header
-## samples = columns, otu abundance = rows
-colnames(otu)[1] <- "Cluster_ID" # after transposing, resolving pb with headers
-nrow(otu)
-
+taxeco2 <- subset(taxeco[,c(3:length(taxeco)),]) 
+taxeco2 <- matrix(as.character(unlist(taxeco2)),
+              ncol = ncol(taxeco2),
+              nrow = nrow(taxeco2))
+```
+```{r sample data}
 # sample data
 sam <- read.table("sample_table.txt",header=T,sep="\t",na.strings = T) 
+sam_no_match <- read.table("samples_no_match.txt",header=T,sep="\t") 
+
 sam[sam==""] <- NA # filling the blanck by NAs
-length(sam)
 rownames(sam) <- sam$sample_id # after transposing, resolving pb with headers
 
 # subsetting design samples per site 
 sam_hala <- subset(sam, sam$site == "Halasen") # 61 samples
 sam_hala5 <- subset(sam, sam$site == "Halasen_p_5") # 29 samples
 sam_fanga <- subset(sam, sam$site == "Fangamon") # 69 samples
-sam_controls_na <- filter(sam, !site %in% c("Halasen","Halasen_p_5","Fangamon"))
-# subset guilds (saprotroph - ectomycorrhizal)
-ecm <- subset(taxeco,taxeco$primary_lifestyle=="ectomycorrhizal") %>% arrange(desc(Cluster_Size))
-sapr <- subset(taxeco,taxeco$primary_lifestyle!="ectomycorrhizal")
+sam_controls_na <- filter(sam, !site %in% c("Halasen","Halasen_p_5","Fangamon")) # 19 samples (or controls)
 ```
+```{r otu table}
+otu <- read.table("otu_table.txt",header=F,sep="\t",na.strings = T) 
+otu = setNames(data.frame(t(otu[,-1])), otu[,1]) # transpose + 1st column (ie samples set as header
+## samples = columns, otu abundance = rows
+colnames(otu)[1] <- "Cluster_ID" # after transposing, resolving pb with headers
+nrow(otu) # total number of all clusters (ie fungi ecm or no-ecm, plants)
+rownames(otu) <- otu$Cluster_ID
+otu <- otu[-1] # deleting 1st column (cluster_id is now in rownames)
+colnames(otu)
 
-```{r supress OTU non ecto/no sapro}
-otu_filtered <- merge(otu, taxeco, by = "Cluster_ID",sort=T) # using taxeco (already filtered by ecm and sapr) to filter otu from other guilds
+not_samples_kept <- c("sITS-standard2", "sITS-standard1", "sPCR_neg_1", "sPCR_neg_2", "sQ2", "s49", "s97") # cf MM_RESULTS.Rmd ```{r DESIGN SAMPLES}  to understand how they are found 
 
-# semi_join(otu, taxeco, by = "Cluster_ID") # not working because not similar df
+samples_kept_pq <- otu[, colnames(otu) %in% not_samples_kept]
+otu <- otu[, !(colnames(otu) %in% not_samples_kept)] # suppressing from dataset 
 
-
-sam_filtered <- sam[sam$sample_id %in% colnames(otu_filtered),] # keep the rows (ie samples) that appear in others tables
-# if 0 obs, in df -> check column names (may differs among datasets)
-rownames(sam_filtered) <- sam_filtered[,1]
-
-rownames(otu_filtered) <- otu_filtered[,1] 
-which(colnames(otu_filtered)=="sPCR_neg_2") # merge 2 dataframe, but we just want to keep otu (with the good rows)
-otu_filtered2 <- subset(otu_filtered[c(1:513),c(2:162),])
-taxeco2 <- subset(taxeco[,c(3:length(taxeco)),]) 
+otu1 <- matrix(as.numeric(unlist(otu)),
+              ncol = ncol(otu),
+              nrow = nrow(otu)) # puting array numeric and transforming in matrix for further functions 
 ```
-
-```{r trasnforming df into matrixes}
-# useful functions
-## str() 
-## class()
-## dplyr::join()
-
-# transforming dataframes into matrixes for phyloseq functions (otu,tax)
-otu_filtered3 <- matrix(as.numeric(unlist(otu_filtered2)), 
-                        ncol = ncol(otu_filtered2),
-                        nrow = nrow(otu_filtered2))
-taxeco3 <- matrix(as.character(unlist(taxeco2)), 
-                        ncol = ncol(taxeco2),
-                        nrow = nrow(taxeco2))
-
-# attributing rownanmes after being deleted from matrix transformation
-rownames(otu_filtered3) <- rownames(otu_filtered2)
-colnames(otu_filtered3) <- colnames(otu_filtered2)
-rownames(taxeco3) <- rownames(taxeco2)
-colnames(taxeco3) <- colnames(taxeco2)
+```{r row and colnames re-attribution (after being deleted from matrix transfo)}
+rownames(otu1) <- rownames(otu)
+colnames(otu1) <- colnames(otu)
+rownames(taxeco2) <- rownames(taxeco1)
+colnames(taxeco2) <- colnames(taxeco1)
 ```
-
 ```{r otu <1% suppresion}
-# transforming abundance matrix to relative
-otu_relative <- prop.table(otu_filtered3, margin=2) # margin = 2 -> column sum and relative abundances
-
-# verification
-## rowsum
-verif_sum <- colSums(otu_relative) %>% summary() %>% print() # ok if 1 and some NAs
-
-## for 3 - c10 c100
-### total read sample3 =744 
-relat_3c10 <- (19/744) %>% print()
-relat_3c100 <- (25/744) %>% print() 
-which(otu_relative==relat_3c10, arr.ind = T)
-which(otu_relative==relat_3c100, arr.ind = T) # good 
-
-# creating a new matrix where <1% reads are deleted 
-otu_sup0.01 <- ifelse(otu_relative>0.01,otu_filtered3,0) 
+otu_relative <- prop.table(otu1, margin=2) # margin = 2 -> column sum and relative abundances
+verif_sum <- colSums(otu_relative) %>% summary() %>% print() # # verification: ok if 1 and some NAs
+otu_sup0.01 <- ifelse(otu_relative>0.01,otu1,0) # creating a new matrix where <1% reads are deleted 
 ```
-
+*CREATION OF PHYSEQ OBJECTS*
 ```{r physeq objects}
 # creating the physeq objects 
 otu_phy <- otu_table(otu_sup0.01, taxa_are_rows = TRUE)
-taxeco_phy <- phyloseq::tax_table(taxeco3)
-sam_phy <- sample_data(sam_filtered)
+taxeco_phy <- phyloseq::tax_table(taxeco2)
+sam_phy <- sample_data(sam)
 
 # general physeq object
 physeq <- phyloseq(otu_phy,taxeco_phy,sam_phy) 
-sample_names(physeq) # missing the controls and negatives
+sample_names(physeq) # 154 samples, as expected 
 ```
-
-```{r physeq susbsets}
+```{r susbsets}
 # subsetting based on sites and guilds 
 # CTRL F + remove_empty_samples = T <-> remove_empty_samples = F
 ecm_phy <- subset_taxa(physeq, primary_lifestyle=="ectomycorrhizal") 
 ecm_phy <- subset_samples(ecm_phy, (ecm_phy@sam_data$site!="control")) %>% 
+clean_pq(remove_empty_samples = FALSE,remove_empty_taxa = T, clean_samples_names = F)
+sapr_phy <- subset_taxa(physeq, primary_lifestyle!="ectomycorrhizal") %>% 
 clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = F)
-sapr_phy <- subset_taxa(physeq, primary_lifestyle!="ectomycorrhizal")
 
 fanga <- subset_samples(physeq, physeq@sam_data$site=="Fangamon") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
 hala <- subset_samples(physeq, physeq@sam_data$site=="Halasen") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
@@ -147,7 +110,7 @@ fanga_sapr <- subset_samples(sapr_phy, sapr_phy@sam_data$site=="Fangamon") %>% c
 hala_sapr <- subset_samples(sapr_phy, sapr_phy@sam_data$site=="Halasen") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
 hala5_sapr <- subset_samples(sapr_phy, sapr_phy@sam_data$site=="Halasen_p_5") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
 ```
-
+*VAR TRANSFO FOR ANALYSIS*
 ```{r transfo variables}
 fanga_sam <- lapply(fanga@sam_data, as.factor) %>% as.data.frame()
 hala_sam <- lapply(hala@sam_data, as.factor) %>% as.data.frame()
@@ -156,7 +119,6 @@ hala5_sam <- lapply(hala5@sam_data, as.factor) %>% as.data.frame()
 sample_data(fanga_ecm)$year_factor <- as.factor(sample_data(fanga_ecm)$year)
 sample_data(hala_ecm)$year_factor <- as.factor(sample_data(hala_ecm)$year)
 ```
-
 ```{r transposing otu table in physq object for hill_pq}
 hala_ecm_otu_t <- t(hala_ecm@otu_table)
 hala_ecm_sam <- hala_ecm@sam_data
@@ -174,7 +136,6 @@ fanga_ecm_tax <- fanga_ecm@tax_table
 fanga_ecm_t <- phyloseq(fanga_ecm_otu_t,fanga_ecm_sam,fanga_ecm_tax)
 
 ```
-
 ```{r pattern with edges: transforming data}
 print(hala_ecm@sam_data)
 factor(hala_ecm@sam_data$specification) %>% levels()

@@ -3,19 +3,17 @@ title: "PRELIMINARY_RESULTS"
 output: html_document
 date: "2023-03-08"
 ---
-
 ```{r KNITR global options: TO DO NOT INCLUDE}
 #| include = F
  
 knitr::opts_chunk$set(echo = F, include = F)
 ```
-
+# *MEMOS*
 controls: 
 alt+o = close all 
 shift+alt+o = open all
 
 for ggplot: position = fill -> relative abundance 
-
 # *REMAINS TO DO* 
 - rarefactions pb 
 - venn pb (all common, nothing specific)
@@ -28,10 +26,14 @@ for ggplot: position = fill -> relative abundance
 - synthetic tab for MM 
 - ID the missing samples (and create a design table)
 
-# *1 LIBRARIES - PALETTES* 
+# *0 LIBRARIES - FUNCTIONS - PALETTES* 
 ```{r libraries}
 library(plyr)
 library(pals)
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+library(vegan)
 ```
 ```{r dummy graphs}
 list_mm <- lsf.str("package:MiscMetabar") 
@@ -55,7 +57,220 @@ funky <- colorRampPalette(c("#A6CEE3","#1F78B4","#B2DF8A",
 "#FDBF6F","#FF7F00","#CAB2D6",
 "#6A3D9A","#FFFF99","#B15928"))
 ```
+```{r functions}
+outersect <- function(x, y) {
+  sort(c(setdiff(x, y),
+         setdiff(y, x)))
+} # extract uncommon values between x - y 
+```
+# *1 MM RESULTS*
+## IMPORTATION DATA
+```{r data import and some modifs}
+# tax-eco table
+setwd("H:/REDACTION/RESULTS/cutting_ecm/TRANSF_DATA2") # to change, depending on which
 
+#data run
+run_data <- read.table("run_data.txt",header=T,sep="\t",na.strings=T,dec=".")
+colnames(run_data)
+
+# clust all
+raw_clust <- read.table("raw_clusters.txt",header=T,sep="\t",na.strings=T,dec=".") %>% 
+arrange(desc(Cluster_Size))
+raw_clust[raw_clust==""] <- NA
+raw_clust[,4] <- as.character(raw_clust[,4])
+
+raw_f_clust <- subset(raw_clust,!grepl("PLANT|NF",raw_clust[,4]))
+ecm_raw <- subset(taxeco,taxeco$primary_lifestyle=="ectomycorrhizal") %>% arrange(desc(Cluster_Size))
+sapr_raw <- subset(taxeco,taxeco$primary_lifestyle!="ectomycorrhizal") %>% arrange(desc(Cluster_Size))
+```
+## DATA RUN
+```{r results mm}
+colnames(run_data) 
+
+run_data[,1]# 2 runs
+run_data[,25] # 98,5% similarity clustering
+
+# run 1
+run_data[1,2] # total nb of pyro reads
+run_data[1,3] # sequences passing quality control (QC)
+run_data[1,2]-run_data[1,3] # sequences deleted
+
+# run 2
+run_data[2,2] # total nb of pyro reads
+run_data[2,3] # sequences passing quality control (QC)
+run_data[2,2]-run_data[2,3] # sequences deleted
+
+# scata taxa attribution 
+
+## no IDed sequences
+is.na(raw_clust[,4]) %>% summary() # 1145 clusters ID / 4050 
+pourc_id <- 1145/4050*100; pourc_id # autoID (especially the most abundant clusters)
+# ID for 1000s first TODO
+
+## NF sequences
+grep("PLANT|NF", raw_clust[,4], value = TRUE) %>% length() # 82 non-fungi clusters IDed 
+
+# total VS conserve
+## nb clusters
+nrow(raw_clust) # all
+nrow(ecm_phy@tax_table) # ecm among 1000st more abundant Fungi clusters 
+pourc_ecm <- nrow(ecm_phy@tax_table)/1000*100; pourc_ecm # 20% ECM guild among Fungi
+
+## nb reads
+run_data[3,2]
+raw_total_read <- sum(raw_f_clust$Cluster_Size); raw_total_read ## TODO: exlcude plants to have proper pourcentages values
+ecm_total_read <-sum(ecm_raw$Cluster_Size); ecm_total_read
+pourc_nb_read_ecm <- ecm_total_read/raw_total_read*100; pourc_nb_read_ecm # pourc nb read conserved/ nb read 
+summary(ecm_raw$Cluster_Size) # min, mean, max of ecm reads
+```
+## OVERVIEW_DATA
+```{r general}
+summary(run_data)
+summary(raw_clust)
+summary(ecm_raw)
+summary(sapr_raw)
+levels(droplevels(ecm_raw$Genus))
+levels(droplevels(sapr_raw$Genus))
+
+summary(ecm_raw$Cluster_Size)
+
+hist_cluster_size <- ggplot(ecm_raw, 
+       aes(x=Cluster_Size))+
+geom_histogram(bins=20,breaks=seq(12,2985 ,by=100),color="black", fill="darkseagreen")+
+  scale_y_continuous(name="number of clusters")+
+  scale_x_continuous(name="number of reads", breaks=seq(12,2985 ,by=100))+
+  theme(axis.text.x=element_text(color="coral4", size=8, angle=60))+
+  ggtitle("Distribution of the cluster size for ECM OTUs") 
+
+hist_cluster_size
+```
+```{r SAC nb read}
+sac_f_raw <- ggplot(raw_f_clust, aes(x=c(1:3968),y=cumsum(Cluster_Size)))+   geom_line(color="red")+
+  geom_point(size=0.7,alpha=0.5)+
+  coord_cartesian(xlim=c(0,3968),ylim=c(0,244367))+
+  scale_y_continuous(name="cumulative cluster size", breaks=seq(0,244367,by=25000))+
+  scale_x_continuous(name="number of cluster", breaks=seq(0,3968 ,by=200))+
+  geom_vline(xintercept=1000,lwd=0.6,colour="red",)+ 
+  annotate("text", x = 1050, y = 25000, label="1000 first clusters conserved", size = 4, angle=0, color = "red", hjust = 0)+
+  annotate("text", x= 1050, y= 15000, label="93.65% of total reads", size = 4, angle=0, color = "red", hjust = 0)+
+  theme(axis.text.x=element_text(color="coral4", size=8, angle=60))+
+  ggtitle("Cumulative cluster size curve from all fungi clusters") 
+
+sac_f_raw
+
+read_1000 <- sum(raw_f_clust[c(1:1000),2]); read_1000
+read_3968 <- sum(raw_f_clust[c(1001:3968),2]); read_3968
+read_total <- sum(raw_f_clust[,2])
+pourc_read_kept <- read_1000/read_total*100; pourc_read_kept
+```
+```{r sample desing}
+
+nrow(otu) # total number of all clusters (ie fungi ecm or no-ecm, plants)
+colnames(otu)
+
+# samples missing post scata (ie not present in the OTU matrix from clustering = no match between ITS4 - ITS7 tags)
+
+samples_missing_postscata <- outersect(x = sam_no_match$samples_match, y = sam_no_match$samples_all) # antijoin but for columns : extract samples not in common (missing from initial samples design)
+samples_missing_postscata <- dput(as.character(samples_missing_postscata)) # convert into the format c(x; y; ...; z)
+sam[sam$sample_id %in% samples_missing_postscata,] # showing samples with site and plots information missing 
+## 5 controls; 3 Halasen; 2 Halasen_p5, 1 Q1; 6 PCR_neg
+## total missing = 17
+
+sample_count_design <- length(rownames(sam)) # 178 samples total design + controls)
+
+# design samples per site 
+length(rownames(sam_hala))
+length(rownames(sam_hala5))
+length(rownames(sam_fanga))
+
+# sample count
+length(rownames(sam_controls_na)) # 19 (12 NAs + 7 controls)
+sum(is.na(sam_controls_na$site)) 
+real_sample_count <- (length(rownames(sam))-length(rownames(sam_controls_na))) %>%
+  print() # 159 sites samples
+
+
+colnames(otu)
+s_id_controls <- sam_controls_na$sample_id[sam_controls_na$site == "control"] %>%
+  na.exclude()  # what are the samples_id of controls samples ? 
+s_id_controls <- dput(as.character(s_id_controls))
+
+col_control_kept <- which(colnames(otu) %in% s_id_controls, arr.ind = F) 
+colnames(otu)[col_control_kept]
+
+controls_kept <- c("sITS-standard2", "sITS-standard1", "sPCR_neg_1", "sPCR_neg_2", "sQ2", "s49", "s97") # 2 ITS; 2 PCR; 1Q; 2 controls 
+
+161-7+5 
+# 161 = total samples kept after scata
+# -7  = controls kept after scata
+# +5  = site samples missing 
+## final 159 samples -> ALL GOOD 
+```
+```{r missing samples}
+# considering physeq objects (ecm_phy,hala_ecm, hala5_ecm, fanga_ecm have been cleaned (sample supress if 0) by clean_pq() )
+colnames(hala_sam)
+summary(hala_sam[,c(2,5:8)])
+table(hala_sam$plot,hala_sam$treatment)
+
+# for ecm-sapr
+summary(sam$sample_id)
+summary(physeq@sam_data$sample_id)
+miss_sam_clust_ecmsapr <- anti_join(x = sam, y = physeq@sam_data) # return all rows from x without a match in y.
+miss_sam_clust_ecmsapr$sample_id # samples deleted after bioinformatic processes (scata, first 1000s clusters, ecm-sapr guilds)
+
+# for ecm only
+summary(sam$sample_id)
+summary(ecm_phy@sam_data$sample_id)
+miss_sam_clust_ecm <- anti_join(x = sam, y = ecm_phy@sam_data)
+miss_sam_clust_ecm$sample_id
+# 8 PCR neg => good control,
+# what about ITS standard ?
+
+clipr::write_clip(miss_sam_clust_ecm$sample_id) # to copy dataframe or vector
+# controls and na 
+miss_sam_clust_ctrl <- anti_join(x = sam_controls_na, y = ecm_phy@sam_data)
+miss_sam_clust_ctrl$sample_id
+
+length(miss_sam_clust_ctrl$sample_id)
+length(row.names(sam_controls_na)) # every control and NA are suppressed from the dataset (because 0 occurence of clusters)
+
+# hala
+miss_sam_clust_hala <- anti_join(x = sam_hala[,1:7], y = hala_ecm@sam_data[,1:7]) # exclude specification column because we changed factor values for this column
+miss_sam_clust_hala$sample_id
+
+# hala5
+miss_sam_clust_hala5 <- anti_join(x = sam_hala5, y = hala5_ecm@sam_data)
+miss_sam_clust_hala5$sample_id
+
+# fanga
+miss_sam_clust_fanga <- anti_join(x = sam_fanga, y = fanga_ecm@sam_data)
+miss_sam_clust_fanga$sample_id
+
+# check if count is good (total missing samples VS sum of missing samples per site)
+length(miss_sam_clust_ecm$sample_id)/(length(miss_sam_clust_hala$sample_id)+length(miss_sam_clust_hala5$sample_id)+length(miss_sam_clust_fanga$sample_id)+length(miss_sam_clust_ctrl$sample_id)) 
+# =1 -> all good 
+
+sam[sam$sample_id %in% samples_missing_postscata,] # showing samples with site and plots information missing 
+## 5 controls; 3 Halasen; 2 Halasen_p5, 1 Q1; 6 PCR_neg
+## total missing = 17
+length(miss_sam_clust_ecm$sample_id) # total 
+length(miss_sam_clust_ctrl$sample_id)
+
+length(miss_sam_clust_hala$sample_id) # 3 missing post scata; 3 missing post taxa-attrib
+length(miss_sam_clust_hala5$sample_id)# 2 missing post scata; 2 missing post taxa-attrib
+length(miss_sam_clust_fanga$sample_id)# 0 missing post scata; 20 missing post taxa-attrib
+
+length(rownames(sam_hala))
+length(rownames(sam_hala5))
+length(rownames(sam_fanga))
+```
+```{r potential contamination ?}
+which(samples_kept_pq>0, arr.ind = T) # location where values of controls have reads
+clusters_reads_inctrl <- rownames(which(samples_kept_pq>0, arr.ind = T)) %>% as.factor()
+levels(clusters_reads_inctrl) # clusters where we found reads in controls samples 
+## -> should we erase them for dataset ? 
+## surely, imo 
+```
 # *2 OVERVIEW DATA FROM SITES*
 ```{r between sites}
 
@@ -182,7 +397,7 @@ hala_hill_treatment[[4]] # TukeyHSD test
 hala_ecm_ggplot1 <- phyloseq::plot_bar(as_binary_otu_table(hala_ecm), x = "specification") 
 hala_ecm_ggplot1 <- ggplot(hala_ecm_ggplot1$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=specification, y = Abundance))+
   geom_bar(stat="identity", position = "stack") +
-  scale_fill_manual(values = cols25(genus_nb_hala))+
+  scale_fill_manual(values = funky(genus_nb_hala))+
   facet_grid(~year, scale="free")+
   labs(title="OTU Genus count (0;1) by position from CC and year", subtitle = "Halasen_edge")+
   xlab("position from CC")+
@@ -194,12 +409,13 @@ hala_ecm_ggplot1
 hala_ecm_ggplot2 <- phyloseq::plot_bar(hala_ecm, x = "specification") 
 hala_ecm_ggplot2 <- ggplot(hala_ecm_ggplot2$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=specification, y = Abundance))+
   geom_bar(stat="identity", position = "stack")+
-  scale_fill_manual(values = cols25(genus_nb_hala))+
+  scale_fill_manual(values = funky(genus_nb_hala))+
   facet_grid(~year, scale="free")+
   labs(title="OTU Genus abundance by position from CC and year", subtitle = "Halasen_edge")+
   xlab("position from CC")+
   guides(fill=guide_legend(title="Genus"))+
   theme(axis.text.x=element_text(color="coral4", size=8, angle=20))
+hala_ecm_ggplot2
 ```
 
 ## 3.2.2 multivariate analysis
@@ -215,6 +431,7 @@ hala_ecm_ordi_mdsjacc <- plot_ordination(hala_ecm, hala_ecm_ordi_mdsjacc, type="
   # legend
   guides(color=guide_legend(title="position from CC"))+
   ggtitle(label = "MDS of samples from Halasen_edge by year", subtitle="presence-absence (jaccard distance)")
+hala_ecm_ordi_mdsjacc
 
 hala_ecm_ordi_mdsbray <- ordinate(hala_ecm, method = "MDS", dist="bray")
 hala_ecm_ordi_mdsbray <- plot_ordination(hala_ecm, hala_ecm_ordi_mdsbray, type="samples", color="specification",label="sample_id")+
@@ -226,6 +443,7 @@ hala_ecm_ordi_mdsbray <- plot_ordination(hala_ecm, hala_ecm_ordi_mdsbray, type="
   # legend
   guides(color=guide_legend(title="position from CC"))+
   ggtitle(label = "MDS of samples from Halasen_edge by year",subtitle = "abundance (bray-curtis distance)")
+hala_ecm_ordi_mdsbray
 
 hala_ecm_ordi_phyl_mdsbray <- ordinate(hala_ecm, method = "MDS", dist="bray")
 plot_ordination(hala_ecm, hala_ecm_ordi_phyl_mdsbray, type="taxa", color="Order", shape="Phylum",label="sample_id")+
@@ -249,7 +467,8 @@ print(hala5_ecm@sam_data)
 # nb genus
 colnames(hala5_ecm@tax_table)
 as.factor(hala5_ecm@tax_table[,5]) %>% droplevels() %>% levels()
-genus_nb_hala5 <- as.factor(hala5_ecm@tax_table[,5]) %>% droplevels() %>% levels() %>% length() # 18 genus
+genus_nb_hala5 <- as.factor(hala5_ecm@tax_table[,5]) %>% droplevels() %>% levels() %>% length() 
+genus_nb_hala5 # 18 genus
 ```
 ## 4.2.1 bivariate analysis
 ```{r rarecurve}
@@ -286,6 +505,7 @@ hala5_ecm_ggplot1 <- ggplot(hala5_ecm_ggplot1$data, aes(fill= fct_reorder(as.fac
   facet_grid(~year, scale="free")+
   labs(title="OTU Genus count (0;1) by cutting treatment",subtitle = "Halasen_P5")+
   guides(fill=guide_legend(title="Genus"))
+hala5_ecm_ggplot1
 
 hala5_ecm_ggplot2 <- phyloseq::plot_bar(hala5_ecm, x = "treatment") 
 hala5_ecm_ggplot2 <- ggplot(hala5_ecm_ggplot2$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment, y = Abundance))+
@@ -294,6 +514,7 @@ hala5_ecm_ggplot2 <- ggplot(hala5_ecm_ggplot2$data, aes(fill= fct_reorder(as.fac
   facet_grid(~year, scale="free")+
   labs(title="OTU Genus abundance by cutting treatment",subtitle = "Halasen_P5")+
   guides(fill=guide_legend(title="Genus"))
+hala5_ecm_ggplot2
 ```
 ```{r hill}
 hala5_hill_treatment <- hill_pq(physeq = hala5_ecm_t, variable = "treatment", color_fac = NA, letters = T) 
@@ -302,8 +523,8 @@ hala5_hill0 <- hala5_hill_treatment[[1]]+
   coord_cartesian(xlim=c(0,16))+
   scale_x_continuous(name="Hill_0", breaks=seq(0,16,by=2))+
   scale_y_continuous(name="treatment", breaks=c(1,2,3))+
-  
   theme(axis.text.x=element_text(color="coral4", size=8, angle=0))
+hala5_hill0
 
 hala5_hill1 <- hala5_hill_treatment[[2]]+ 
   labs(title="Hill 1 : treatment", subtitle="Hagadalen5")+
@@ -378,7 +599,9 @@ table(fanga_sam$plot,fanga_sam$treatment)
 # nb genus
 colnames(fanga_ecm@tax_table)
 as.factor(fanga_ecm@tax_table[,5]) %>% droplevels() %>% levels()
-genus_nb_fanga <- as.factor(fanga_ecm@tax_table[,5]) %>% droplevels() %>% levels() %>% length() # 16 genus
+genus_nb_fanga <- as.factor(fanga_ecm@tax_table[,5]) %>% droplevels() %>% levels() %>% length()
+genus_nb_fanga # 15 genus
+
 ```
 
 ## 5.2.1 bivariate analysis
@@ -416,6 +639,7 @@ fanga_ecm_ggplot1 <- ggplot(fanga_ecm_ggplot1$data, aes(fill= fct_reorder(as.fac
   facet_grid(~year, scale="free")+
   labs(title="OTU Genus count (0;1) by cutting treatment",subtitle = "Fangamon")+
   guides(fill=guide_legend(title="Genus"))
+fanga_ecm_ggplot1
 
 fanga_ecm_ggplot2 <- phyloseq::plot_bar(fanga_ecm, x = "treatment") 
 fanga_ecm_ggplot2 <- ggplot(fanga_ecm_ggplot2$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment, y = Abundance))+
@@ -425,7 +649,7 @@ fanga_ecm_ggplot2 <- ggplot(fanga_ecm_ggplot2$data, aes(fill= fct_reorder(as.fac
   facet_grid(~year, scale="free")+
   labs(title="OTU Genus abundance by cutting treatment",subtitle = "Fangamon")+
   guides(fill=guide_legend(title="Genus"))
-
+fanga_ecm_ggplot2
 # position = fill -> relative abundance 
 ```
 ```{r hill fanga}

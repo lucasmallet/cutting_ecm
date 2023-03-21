@@ -12,6 +12,12 @@ library(dplyr)
 library(tidyverse)
 library(vegan)
 ```
+```{r functions}
+outersect <- function(x, y) {
+  sort(c(setdiff(x, y),
+         setdiff(y, x)))
+} # extract uncommon values between x - y 
+```
 
 # IMPORTATION DATA
 ```{r }
@@ -165,14 +171,67 @@ miss_sam_clust_fanga$sample_id
 length(miss_sam_clust_ecm$sample_id)/(length(miss_sam_clust_hala$sample_id)+length(miss_sam_clust_hala5$sample_id)+length(miss_sam_clust_fanga$sample_id)+length(miss_sam_clust_ctrl$sample_id)) 
 # =1 -> all good 
 
-length(miss_sam_clust_ecm$sample_id) # total 
-length(miss_sam_clust_ctrl$sample_id)
-length(miss_sam_clust_hala$sample_id)
-length(miss_sam_clust_hala5$sample_id)
-length(miss_sam_clust_fanga$sample_id)
+not_samples_kept
+length(miss_sam_clust_ecm$sample_id) 
+length(miss_sam_clust_ctrl$sample_id) 
+length(miss_sam_clust_hala$sample_id) # total 6 
+length(miss_sam_clust_hala5$sample_id)# total 4 (including 4)
+length(miss_sam_clust_fanga$sample_id)# total 20
 
 length(rownames(sam_hala))
 length(rownames(sam_hala5))
 length(rownames(sam_fanga))
+```
+
+```{r DESIGN SAMPLES}
+
+nrow(otu) # total number of all clusters (ie fungi ecm or no-ecm, plants)
+colnames(otu)
+
+# samples missing post scata (ie not present in the OTU matrix from clustering = no match between ITS4 - ITS7 tags)
+
+samples_missing_postscata <- outersect(x = sam_no_match$samples_match, y = sam_no_match$samples_all) # antijoin but for columns : extract samples not in common (missing from initial samples design)
+samples_missing_postscata <- dput(as.character(samples_missing_postscata)) # convert into the format c(x; y; ...; z)
+sam[sam$sample_id %in% samples_missing_postscata,] # showing samples with site and plots information missing 
+## 5 controls; 3 Halasen; 2 Halasen_p5, 1 Q1; 6 PCR_neg
+## total missing = 17
+
+sample_count_design <- length(rownames(sam)) # 178 samples total design + controls)
+
+# design samples per site 
+length(rownames(sam_hala))
+length(rownames(sam_hala5))
+length(rownames(sam_fanga))
+
+# sample count
+length(rownames(sam_controls_na)) # 19 (12 NAs + 7 controls)
+sum(is.na(sam_controls_na$site)) 
+real_sample_count <- (length(rownames(sam))-length(rownames(sam_controls_na))) %>%
+  print() # 159 sites samples
+
+
+colnames(otu)
+s_id_controls <- sam_controls_na$sample_id[sam_controls_na$site == "control"] %>%
+  na.exclude()  # what are the samples_id of controls samples ? 
+s_id_controls <- dput(as.character(s_id_controls))
+
+col_control_kept <- which(colnames(otu) %in% s_id_controls, arr.ind = F) 
+colnames(otu)[col_control_kept]
+
+controls_kept <- c("sITS-standard2", "sITS-standard1", "sPCR_neg_1", "sPCR_neg_2", "sQ2", "s49", "s97") # 2 ITS; 2 PCR; 1Q; 2 controls 
+
+161-7+5 
+# 161 = total samples kept after scata
+# -7  = controls kept after scata
+# +5  = site samples missing 
+## final 159 samples -> ALL GOOD 
+```
+
+```{r potential contamination ?}
+which(samples_kept_pq>0, arr.ind = T) # location where values of controls have reads
+clusters_reads_inctrl <- rownames(which(samples_kept_pq>0, arr.ind = T)) %>% as.factor()
+levels(clusters_reads_inctrl) # clusters where we found reads in controls samples 
+## -> should we erase them for dataset ? 
+## surely, imo 
 ```
 
