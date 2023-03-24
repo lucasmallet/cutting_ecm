@@ -417,7 +417,19 @@ hala_ecm_ggplot2 <- ggplot(hala_ecm_ggplot2$data, aes(fill= fct_reorder(as.facto
   theme(axis.text.x=element_text(color="coral4", size=8, angle=20))
 hala_ecm_ggplot2
 ```
-
+```{r barplot OTUs distribution}
+## OTU Genus count (0;1) by treatment
+hala_ecm_ggplot3 <- phyloseq::plot_bar(as_binary_otu_table(hala_ecm), x = "specification") 
+hala_ecm_ggplot3 <- ggplot(hala_ecm_ggplot3$data, aes(fill= fct_reorder(as.factor(OTU_ID), Abundance), x=specification, y = Abundance))+
+  geom_bar(stat="identity", position = "stack") +
+  scale_fill_manual(values = funky(47))+
+  facet_grid(~year, scale="free")+
+  labs(title="OTU Genus count (0;1) by position from CC and year", subtitle = "Halasen_edge")+
+  xlab("position from CC")+
+  guides(fill=guide_legend(title="Genus"))+
+  theme(axis.text.x=element_text(color="coral4", size=8, angle=20))
+hala_ecm_ggplot3
+```
 ## 3.2.2 multivariate analysis
 ```{r multivariate representation}
 
@@ -497,7 +509,7 @@ circle_pq(physeq = hala5_ecm,
                               add_nb_seq = T) # distribution circle sample - taxonomy 
 circle_hala5_ecm
 ```
-```{r plotting tests}
+```{r genus distribution}
 hala5_ecm_ggplot1 <- phyloseq::plot_bar(as_binary_otu_table(hala5_ecm), x = "treatment") 
 hala5_ecm_ggplot1 <- ggplot(hala5_ecm_ggplot1$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment, y = Abundance))+
   geom_bar(stat="identity", position = "stack") +
@@ -516,10 +528,20 @@ hala5_ecm_ggplot2 <- ggplot(hala5_ecm_ggplot2$data, aes(fill= fct_reorder(as.fac
   guides(fill=guide_legend(title="Genus"))
 hala5_ecm_ggplot2
 ```
-```{r hill}
+```{r OTUs distribution}
+hala5_ecm_ggplot3 <- phyloseq::plot_bar(as_binary_otu_table(hala5_ecm), x = "treatment") 
+hala5_ecm_ggplot3 <- ggplot(hala5_ecm_ggplot3$data, aes(fill= fct_reorder(as.factor(OTU_ID), Abundance), x=treatment, y = Abundance))+
+  geom_bar(stat="identity", position = "stack") +
+  scale_fill_manual(values = funky(32))+
+  facet_grid(~year, scale="free")+
+  labs(title="OTU Genus count (0;1) by cutting treatment",subtitle = "Halasen_P5")+
+  guides(fill=guide_legend(title="Genus"))
+hala5_ecm_ggplot3
+```
+```{r hill OTUs}
 hala5_hill_treatment <- hill_pq(physeq = hala5_ecm_t, variable = "treatment", color_fac = NA, letters = T) 
 hala5_hill0 <- hala5_hill_treatment[[1]]+ 
-  labs(title="Hill 0 : treatment", subtitle="Hagadalen5")+
+  labs(title="Hill 0 : apha diversity of ", subtitle="Halasen5")+
   coord_cartesian(xlim=c(0,16))+
   scale_x_continuous(name="Hill_0", breaks=seq(0,16,by=2))+
   scale_y_continuous(name="treatment", breaks=c(1,2,3))+
@@ -527,14 +549,14 @@ hala5_hill0 <- hala5_hill_treatment[[1]]+
 hala5_hill0
 
 hala5_hill1 <- hala5_hill_treatment[[2]]+ 
-  labs(title="Hill 1 : treatment", subtitle="Hagadalen5")+
+  labs(title="Hill 1 : treatment", subtitle="Halasen5")+
   coord_cartesian(xlim=c(0,12))+
   scale_x_continuous(name="Hill_1", breaks=seq(0,12,by=2))+
   scale_y_continuous(name="treatment", breaks=c(1,2,3))+
   theme(axis.text.x=element_text(color="coral4", size=8, angle=0))
 
 hala5_hill2 <- hala5_hill_treatment[[3]]+ 
-  labs(title="Hill 2 : treatment", subtitle="Hagadalen5")+
+  labs(title="Hill 2 : treatment", subtitle="Halasen5")+
   coord_cartesian(xlim=c(0,10))+
   scale_x_continuous(name="Hill_2", breaks=seq(0,10,by=2))+
   scale_y_continuous(name="treatment", breaks=c(1,2,3))+
@@ -545,7 +567,7 @@ hala5_hill_treatment[[4]] # TukeyHSD test
 ```
 
 ## 4.2.2 multivariate analysis
-```{r plotting tests}
+```{r ordination}
 hala5_ecm_ordi_mdsjacc  <- ordinate(hala5_ecm, method = "MDS", dist="bray")
 hala5_ecm_ordi_mdsjacc  <- plot_ordination(hala5_ecm, hala5_ecm_ordi_mdsjacc, type="samples", color="treatment",label="sample_id")+
   geom_point(size=2)+
@@ -555,6 +577,7 @@ hala5_ecm_ordi_mdsjacc  <- plot_ordination(hala5_ecm, hala5_ecm_ordi_mdsjacc, ty
   # legend
   guides(color=guide_legend(title="treatment"))+
   ggtitle(label = "MDS of samples from Halasen_5P",subtitle = "abundance")
+hala5_ecm_ordi_mdsjacc
 
 hala5_ecm_ordi_mdsbray  <- ordinate(as_binary_otu_table(hala5_ecm), method = "MDS", dist="jaccard")
 hala5_ecm_ordi_mdsbray  <-plot_ordination(hala5_ecm, hala5_ecm_ordi_mdsbray , type="samples", color="treatment",label="sample_id")+
@@ -585,8 +608,6 @@ plot_ordination(hala5_ecm, hala5_ecm_ordi_phyl1, type="taxa", color="Order", sha
   # legend
   guides(color=guide_legend(title="position from CC"))+
   ggtitle(label = "MDS of samples from Halasen_edge by year",subtitle = "abundance (bray-curtis distance)")
-
-
 ```
 # *5 FANGAMON STUDY: randomly distributed retention trees*
 ## 5.1 design and sampling
