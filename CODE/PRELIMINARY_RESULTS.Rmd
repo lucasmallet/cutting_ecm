@@ -393,6 +393,7 @@ hala_hill_treatment[[4]] # TukeyHSD test
 
 ```
 ```{r barplot genus distribution}
+genus_nb_hala <- as.factor(hala_ecm@tax_table[,5]) %>% droplevels() %>% levels() %>% length()
 ## OTU Genus count (0;1) by treatment
 hala_ecm_ggplot1 <- phyloseq::plot_bar(as_binary_otu_table(hala_ecm), x = "specification") 
 hala_ecm_ggplot1 <- ggplot(hala_ecm_ggplot1$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=specification, y = Abundance))+
@@ -418,11 +419,12 @@ hala_ecm_ggplot2 <- ggplot(hala_ecm_ggplot2$data, aes(fill= fct_reorder(as.facto
 hala_ecm_ggplot2
 ```
 ```{r barplot OTUs distribution}
-## OTU Genus count (0;1) by treatment
+otu_nb_hala <- as.factor(hala_ecm@tax_table[,6]) %>% droplevels() %>% levels() %>% length()
+## OTU count (0;1) by treatment
 hala_ecm_ggplot3 <- phyloseq::plot_bar(as_binary_otu_table(hala_ecm), x = "specification") 
 hala_ecm_ggplot3 <- ggplot(hala_ecm_ggplot3$data, aes(fill= fct_reorder(as.factor(OTU_ID), Abundance), x=specification, y = Abundance))+
   geom_bar(stat="identity", position = "stack") +
-  scale_fill_manual(values = funky(47))+
+  scale_fill_manual(values = funky(otu_nb_hala))+
   facet_grid(~year, scale="free")+
   labs(title="OTU Genus count (0;1) by position from CC and year", subtitle = "Halasen_edge")+
   xlab("position from CC")+
@@ -510,6 +512,7 @@ circle_pq(physeq = hala5_ecm,
 circle_hala5_ecm
 ```
 ```{r genus distribution}
+genus_nb_hala5 <- as.factor(hala5_ecm@tax_table[,5]) %>% droplevels() %>% levels() %>% length()
 hala5_ecm_ggplot1 <- phyloseq::plot_bar(as_binary_otu_table(hala5_ecm), x = "treatment") 
 hala5_ecm_ggplot1 <- ggplot(hala5_ecm_ggplot1$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment, y = Abundance))+
   geom_bar(stat="identity", position = "stack") +
@@ -524,19 +527,29 @@ hala5_ecm_ggplot2 <- ggplot(hala5_ecm_ggplot2$data, aes(fill= fct_reorder(as.fac
   geom_bar(stat="identity", position = "stack") +
   scale_fill_manual(values = cols25(genus_nb_hala5))+
   facet_grid(~year, scale="free")+
-  labs(title="OTU Genus abundance by cutting treatment",subtitle = "Halasen_P5")+
+  labs(title="OTU Genus abundance (nb of reads) by cutting treatment",subtitle = "Halasen_P5")+
   guides(fill=guide_legend(title="Genus"))
 hala5_ecm_ggplot2
 ```
 ```{r OTUs distribution}
+otu_nb_hala5 <- as.factor(hala5_ecm@tax_table[,6]) %>% droplevels() %>% levels() %>% length()
 hala5_ecm_ggplot3 <- phyloseq::plot_bar(as_binary_otu_table(hala5_ecm), x = "treatment") 
 hala5_ecm_ggplot3 <- ggplot(hala5_ecm_ggplot3$data, aes(fill= fct_reorder(as.factor(OTU_ID), Abundance), x=treatment, y = Abundance))+
   geom_bar(stat="identity", position = "stack") +
-  scale_fill_manual(values = funky(32))+
+  scale_fill_manual(values = funky(otu_nb_hala5))+
   facet_grid(~year, scale="free")+
   labs(title="OTU Genus count (0;1) by cutting treatment",subtitle = "Halasen_P5")+
   guides(fill=guide_legend(title="Genus"))
 hala5_ecm_ggplot3
+
+hala5_ecm_ggplot4 <- phyloseq::plot_bar(hala5_ecm, x = "treatment") 
+hala5_ecm_ggplot4 <- ggplot(hala5_ecm_ggplot4$data, aes(fill= fct_reorder(as.factor(OTU_ID), Abundance), x=treatment, y = Abundance))+
+  geom_bar(stat="identity", position = "stack") +
+  scale_fill_manual(values = funky(otu_nb_hala5))+
+  facet_grid(~year, scale="free")+
+  labs(title="OTU abundance (nb of reads) by cutting treatment",subtitle = "Halasen_P5")+
+  guides(fill=guide_legend(title="Genus"))
+hala5_ecm_ggplot4
 ```
 ```{r hill OTUs}
 hala5_hill_treatment <- hill_pq(physeq = hala5_ecm_t, variable = "treatment", color_fac = NA, letters = T) 
@@ -624,7 +637,6 @@ genus_nb_fanga <- as.factor(fanga_ecm@tax_table[,5]) %>% droplevels() %>% levels
 genus_nb_fanga # 15 genus
 
 ```
-
 ## 5.2.1 bivariate analysis
 ```{r rarecurve}
 fanga_rrcurve <- phyloseq.extended::ggrare(fanga_ecm, step = 10, color = "treatment", label="sample_id",plot=F, se=T)  + facet_wrap(~year)
@@ -651,7 +663,8 @@ circle_fanga_ecm <- circle_pq(physeq = fanga_ecm,
                               grid_col= 1,
                               add_nb_seq = T)
 ```
-```{r plotting tests}
+```{r genus distribution}
+genus_nb_fanga <- as.factor(fanga_ecm@tax_table[,5]) %>% droplevels() %>% levels() %>% length()
 fanga_ecm_ggplot1 <- phyloseq::plot_bar(as_binary_otu_table(fanga_ecm), x = "treatment") 
 fanga_ecm_ggplot1 <- ggplot(fanga_ecm_ggplot1$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment, y = Abundance))+
   geom_bar(stat="identity", position = "stack") +
@@ -668,9 +681,32 @@ fanga_ecm_ggplot2 <- ggplot(fanga_ecm_ggplot2$data, aes(fill= fct_reorder(as.fac
   facet_grid(~year, scale="free")+
   scale_fill_manual(values = cols25(genus_nb_fanga))+
   facet_grid(~year, scale="free")+
-  labs(title="OTU Genus abundance by cutting treatment",subtitle = "Fangamon")+
+  labs(title="OTU Genus abundance (nb of reads) by cutting treatment",subtitle = "Fangamon")+
   guides(fill=guide_legend(title="Genus"))
 fanga_ecm_ggplot2
+# position = fill -> relative abundance 
+```
+```{r OTU distribution}
+otu_nb_fanga <- as.factor(fanga_ecm@tax_table[,6]) %>% droplevels() %>% levels() %>% length()
+fanga_ecm_ggplot3 <- phyloseq::plot_bar(as_binary_otu_table(fanga_ecm), x = "treatment") 
+fanga_ecm_ggplot3 <- ggplot(fanga_ecm_ggplot3$data, aes(fill= fct_reorder(as.factor(OTU_ID), Abundance), x=treatment, y = Abundance))+
+  geom_bar(stat="identity", position = "stack") +
+  facet_grid(~year, scale="free")+
+  scale_fill_manual(values = funky(otu_nb_fanga))+
+  facet_grid(~year, scale="free")+
+  labs(title="OTU Genus count (0;1) by cutting treatment",subtitle = "Fangamon")+
+  guides(fill=guide_legend(title="Genus"))
+fanga_ecm_ggplot3
+
+fanga_ecm_ggplot4 <- phyloseq::plot_bar(fanga_ecm, x = "treatment") 
+fanga_ecm_ggplot4 <- ggplot(fanga_ecm_ggplot4$data, aes(fill= fct_reorder(as.factor(OTU_ID), Abundance), x=treatment, y = Abundance))+
+  geom_bar(stat="identity", position = "stack") +
+  facet_grid(~year, scale="free")+
+  scale_fill_manual(values = funky(otu_nb_fanga))+
+  facet_grid(~year, scale="free")+
+  labs(title="OTU Genus abundance (nb of reads) by cutting treatment",subtitle = "Fangamon")+
+  guides(fill=guide_legend(title="Genus"))
+fanga_ecm_ggplot4
 # position = fill -> relative abundance 
 ```
 ```{r hill fanga}

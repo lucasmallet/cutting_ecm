@@ -94,6 +94,7 @@ sample_names(physeq) # 154 samples, as expected
 physeq@tax_table[physeq@tax_table == "Gautieria_"] <- "Gautieria"
 physeq@tax_table[physeq@tax_table == "Piloderma__"] <- "Piloderma"
 physeq@tax_table[physeq@tax_table == "Sebacina__"] <- "Sebacina"
+physeq@tax_table[physeq@tax_table == "Inocybe_geophylla"] <- "Inocybe_geophylla_(coll.)"
 ```
 ```{r susbsets}
 # subsetting based on sites and guilds 
