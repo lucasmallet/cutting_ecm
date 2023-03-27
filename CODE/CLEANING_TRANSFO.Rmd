@@ -96,7 +96,7 @@ physeq@tax_table[physeq@tax_table == "Piloderma__"] <- "Piloderma"
 physeq@tax_table[physeq@tax_table == "Sebacina__"] <- "Sebacina"
 physeq@tax_table[physeq@tax_table == "Inocybe_geophylla"] <- "Inocybe_geophylla_(coll.)"
 ```
-```{r susbsets}
+```{r susbsets primary}
 # subsetting based on sites and guilds 
 # CTRL F + remove_empty_samples = T <-> remove_empty_samples = F
 ecm_phy <- subset_taxa(physeq, primary_lifestyle=="ectomycorrhizal") 
@@ -112,43 +112,9 @@ hala5 <- subset_samples(physeq, physeq@sam_data$site=="Halasen_p_5") %>% clean_p
 fanga_ecm <- subset_samples(ecm_phy, ecm_phy@sam_data$site=="Fangamon") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
 hala_ecm <- subset_samples(ecm_phy, ecm_phy@sam_data$site=="Halasen") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
 hala5_ecm <- subset_samples(ecm_phy, ecm_phy@sam_data$site=="Halasen_p_5") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
-
-fanga_ecm_12 <- subset_samples(fanga_ecm, fanga_ecm@sam_data$year=="2012") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
-hala_ecm_12 <- subset_samples(hala_ecm, hala_ecm@sam_data$year=="2012") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
-
-fanga_ecm_18 <- subset_samples(fanga_ecm, fanga_ecm@sam_data$year=="2018") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
-hala_ecm_18 <- subset_samples(hala_ecm, hala_ecm@sam_data$year=="2018") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
-
-fanga_sapr <- subset_samples(sapr_phy, sapr_phy@sam_data$site=="Fangamon") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
-hala_sapr <- subset_samples(sapr_phy, sapr_phy@sam_data$site=="Halasen") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
-hala5_sapr <- subset_samples(sapr_phy, sapr_phy@sam_data$site=="Halasen_p_5") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
 ```
-*VAR TRANSFO FOR ANALYSIS*
-```{r transfo variables}
-fanga_sam <- lapply(fanga@sam_data, as.factor) %>% as.data.frame()
-hala_sam <- lapply(hala@sam_data, as.factor) %>% as.data.frame()
-hala5_sam <- lapply(hala5@sam_data, as.factor) %>% as.data.frame()
-
-sample_data(fanga_ecm)$year_factor <- as.factor(sample_data(fanga_ecm)$year)
-sample_data(hala_ecm)$year_factor <- as.factor(sample_data(hala_ecm)$year)
-```
-```{r transposing otu table in physq object for hill_pq}
-hala_ecm_otu_t <- t(hala_ecm@otu_table)
-hala_ecm_sam <- hala_ecm@sam_data
-hala_ecm_tax <- hala_ecm@tax_table
-hala_ecm_t <- phyloseq(hala_ecm_otu_t,hala_ecm_sam,hala_ecm_tax)
-
-hala5_ecm_otu_t <- t(hala5_ecm@otu_table)
-hala5_ecm_sam <- hala5_ecm@sam_data
-hala5_ecm_tax <- hala5_ecm@tax_table
-hala5_ecm_t <- phyloseq(hala5_ecm_otu_t,hala5_ecm_sam,hala5_ecm_tax)
-
-fanga_ecm_otu_t <- t(fanga_ecm@otu_table)
-fanga_ecm_sam <- fanga_ecm@sam_data
-fanga_ecm_tax <- fanga_ecm@tax_table
-fanga_ecm_t <- phyloseq(fanga_ecm_otu_t,fanga_ecm_sam,fanga_ecm_tax)
-```
-```{r pattern with edges: transforming data}
+```{r transforming factor labels}
+# hala
 print(hala_ecm@sam_data)
 factor(hala_ecm@sam_data$specification) %>% levels()
 
@@ -167,57 +133,72 @@ hala_ecm@sam_data$specification <- plyr::revalue(hala_ecm@sam_data$specification
                            c("middle"="CC_middle", 
                              "edge"="CC_edge"))
 as.factor(hala_ecm@sam_data$specification) %>% droplevels() %>% levels()
-########
-# also for 12 and 18
-## 12
-hala_ecm_12@sam_data$specification <- plyr::revalue(hala_ecm_12@sam_data$specification,
-                           c("edge_north"="edge", 
-                             "edge_south"="edge",
-                             "kant_norra"="edge", 
-                             "middle_lower"="middle", 
-                             "middle_upper"="middle",
-                             "midle"="middle"))
-as.factor(hala_ecm_12@sam_data$specification) %>% droplevels() %>% levels()
 
-hala_ecm_12@sam_data <- within(hala_ecm_12@sam_data, specification[specification=="middle" & treatment=="forest"] <- "FOR_middle") 
+# hala5
+hala5_ecm@sam_data$treatment <- plyr::revalue(hala5_ecm@sam_data$treatment,
+                           c("control" = "forest",
+                             "p_5" = "thinned"))
+as.factor(hala5_ecm@sam_data$treatment) %>% droplevels() %>% levels()
 
-hala_ecm_12@sam_data$specification <- plyr::revalue(hala_ecm_12@sam_data$specification,
-                           c("middle"="CC_middle", 
-                             "edge"="CC_edge"))
-as.factor(hala_ecm_12@sam_data$specification) %>% droplevels() %>% levels()
-########
-## 18
-hala_ecm_18@sam_data$specification <- plyr::revalue(hala_ecm_18@sam_data$specification,
-                           c("edge_north"="edge", 
-                             "edge_south"="edge",
-                             "kant_norra"="edge", 
-                             "middle_lower"="middle", 
-                             "middle_upper"="middle",
-                             "midle"="middle"))
-as.factor(hala_ecm_18@sam_data$specification) %>% droplevels() %>% levels()
+# fanga
+fanga_ecm@sam_data$treatment <- plyr::revalue(fanga_ecm@sam_data$treatment,
+                           c("forest_control" = "forest",
+                             "shelter_burn" = "thinned_burn",
+                             "shelter_without_burn" = "thinned_no_burn"))
+as.factor(fanga_ecm@sam_data$treatment) %>% droplevels() %>% levels()
+```
+```{r subsets secondary}
+fanga_ecm_12 <- subset_samples(fanga_ecm, fanga_ecm@sam_data$year=="2012") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
+hala_ecm_12 <- subset_samples(hala_ecm, hala_ecm@sam_data$year=="2012") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
 
-hala_ecm_18@sam_data <- within(hala_ecm_18@sam_data, specification[specification=="middle" & treatment=="forest"] <- "FOR_middle") 
+fanga_ecm_18 <- subset_samples(fanga_ecm, fanga_ecm@sam_data$year=="2018") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
+hala_ecm_18 <- subset_samples(hala_ecm, hala_ecm@sam_data$year=="2018") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
 
-hala_ecm_18@sam_data$specification <- plyr::revalue(hala_ecm_18@sam_data$specification,
-                           c("middle"="CC_middle", 
-                             "edge"="CC_edge"))
-as.factor(hala_ecm_18@sam_data$specification) %>% droplevels() %>% levels()
-# also for the transposed physeq object 
-hala_ecm_t@sam_data$specification <- plyr::revalue(hala_ecm_t@sam_data$specification,
-                           c("edge_north"="edge", 
-                             "edge_south"="edge",
-                             "kant_norra"="edge", 
-                             "middle_lower"="middle", 
-                             "middle_upper"="middle",
-                             "midle"="middle"))
-as.factor(hala_ecm_t@sam_data$specification) %>% droplevels() %>% levels()
+fanga_sapr <- subset_samples(sapr_phy, sapr_phy@sam_data$site=="Fangamon") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
+hala_sapr <- subset_samples(sapr_phy, sapr_phy@sam_data$site=="Halasen") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
+hala5_sapr <- subset_samples(sapr_phy, sapr_phy@sam_data$site=="Halasen_p_5") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
+```
+*VAR TRANSFO FOR ANALYSIS*
+```{r transfo variables}
+fanga_sam <- lapply(fanga@sam_data, as.factor) %>% as.data.frame()
+hala_sam <- lapply(hala@sam_data, as.factor) %>% as.data.frame()
+hala5_sam <- lapply(hala5@sam_data, as.factor) %>% as.data.frame()
 
-hala_ecm_t@sam_data <- within(hala_ecm_t@sam_data, specification[specification=="middle" & treatment=="forest"] <- "FOR_middle") 
+sample_data(fanga_ecm)$year_factor <- as.factor(sample_data(fanga_ecm)$year)
+sample_data(hala_ecm)$year_factor <- as.factor(sample_data(hala_ecm)$year)
 
-hala_ecm_t@sam_data$specification <- plyr::revalue(hala_ecm_t@sam_data$specification,
-                           c("middle"="CC_middle", 
-                             "edge"="CC_edge"))
-as.factor(hala_ecm_t@sam_data$specification) %>% droplevels() %>% levels()
+hala5_ecm@sam_data$treatment <- plyr::revalue(hala5_ecm@sam_data$treatment,
+                           c("control" = "forest",
+                             "p_5" = "thinned"))
+as.factor(hala5_ecm@sam_data$treatment) %>% droplevels() %>% levels()
+
+fanga_ecm_12@sam_data$treatment <- plyr::revalue(fanga_ecm_12@sam_data$treatment,
+                           c("forest_control" = "forest",
+                             "shelter_burn" = "thinned_burn",
+                             "shelter_without_burn" = "thinned_no_burn"))
+as.factor(fanga_ecm_12@sam_data$treatment) %>% droplevels() %>% levels()
+
+fanga_ecm_18@sam_data$treatment <- plyr::revalue(fanga_ecm_18@sam_data$treatment,
+                           c("forest_control" = "forest",
+                             "shelter_burn" = "thinned_burn",
+                             "shelter_without_burn" = "thinned_no_burn"))
+as.factor(fanga_ecm_18@sam_data$treatment) %>% droplevels() %>% levels()
+```
+```{r transposing otu table in physq object for hill_pq}
+hala_ecm_otu_t <- t(hala_ecm@otu_table)
+hala_ecm_sam <- hala_ecm@sam_data
+hala_ecm_tax <- hala_ecm@tax_table
+hala_ecm_t <- phyloseq(hala_ecm_otu_t,hala_ecm_sam,hala_ecm_tax)
+
+hala5_ecm_otu_t <- t(hala5_ecm@otu_table)
+hala5_ecm_sam <- hala5_ecm@sam_data
+hala5_ecm_tax <- hala5_ecm@tax_table
+hala5_ecm_t <- phyloseq(hala5_ecm_otu_t,hala5_ecm_sam,hala5_ecm_tax)
+
+fanga_ecm_otu_t <- t(fanga_ecm@otu_table)
+fanga_ecm_sam <- fanga_ecm@sam_data
+fanga_ecm_tax <- fanga_ecm@tax_table
+fanga_ecm_t <- phyloseq(fanga_ecm_otu_t,fanga_ecm_sam,fanga_ecm_tax)
 ```
 ```{r grouping by factor of insterest}
 hala_grp_12 <- merge_group(hala_ecm_12, group = "specification",)
