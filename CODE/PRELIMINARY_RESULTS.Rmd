@@ -143,6 +143,10 @@ geom_histogram(bins=20,breaks=seq(12,2985 ,by=100),color="black", fill="darkseag
   ggtitle("Distribution of the cluster size for ECM OTUs") 
 
 hist_cluster_size
+
+read_distribution <- plot_read_distribution(ecm_phy, groups = "site", 
+                            plot.type = "density")
+print(read_distribution + theme_biome_utils())
 ```
 ```{r SAC nb read}
 sac_f_raw <- ggplot(raw_f_clust, aes(x=c(1:3968),y=cumsum(Cluster_Size)))+   geom_line(color="red")+
@@ -850,7 +854,6 @@ ggplot(fanga_ecm_ggplot2$data, aes(fill= fct_reorder(as.factor(Genus), Abundance
   facet_grid(~year, scale="free")+
   labs(title="", subtitle="")  
 ```
-
 ## 5.2.2 multivariate analysis
 ```{r ordination}
 fanga_ecm_ordi_mdsjacc <- ordinate(as_binary_otu_table(fanga_ecm), method = "MDS", dist="jaccard")
@@ -914,7 +917,9 @@ table(hala_sam$plot,hala_sam$treatment)
 # number of genus
 as.factor(hala_ecm@tax_table[,5]) %>% droplevels() %>% levels() 
 
-hala_rrcurve # rarefaction curve for samples between 2012 and 2018
+hala_rrcurve_groups1
+hala_rrcurve_groups2
+
 circle_pq(physeq = hala_ecm, 
                               fact = "specification", 
                               taxa = "Genus", 

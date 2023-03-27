@@ -22,7 +22,7 @@ outersect <- function(x, y) {
 # IMPORTATION DATA
 ```{r }
 # tax-eco table
-setwd("H:/REDACTION/RESULTS/cutting_ecm/TRANSF_DATA") # to change, depending on which computer i am working on
+#setwd("H:/REDACTION/RESULTS/cutting_ecm/TRANSF_DATA") # to change, depending on which computer i am working on
 tax_table <- read.table("tax_table.txt",header=T,sep="\t") # change #N/A in excel in NA
 length(tax_table)
 tax_table[,c(3:10)] <- lapply(tax_table[,c(3:10)], as.factor) 
