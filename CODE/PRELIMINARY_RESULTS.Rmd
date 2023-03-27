@@ -334,20 +334,17 @@ ggvenn_pq(hala_ecm, fact="year", taxonomic_rank = "Genus")
 
 ## 3.2.1 alpha
 ```{r rarecurve}
-hala_rrcurve <- phyloseq.extended::ggrare(hala_ecm, step = 10, color = "specification", label="sample_id",plot=F, se=T)+ 
+hala_rrcurve_groups0 <- phyloseq.extended::ggrare(hala_grp, step = 10, color = "specification", label="sample_id",plot=F, se=T)+ 
   facet_wrap(~year)
-hala_rrcurve 
-###
-hala_rrcurve_groups <- microbiomeutilities::plot_alpha_rcurve(hala_ecm, index="observed", 
-                       subsamples = c(2,100,250,500,750,1000),
-                       lower.conf = 0.3, 
-                       upper.conf = 0.7,
-                       group="specification",
-                       label.color = "brown3",
-                       label.size = 3,
-                       label.min = TRUE,
-                       type = "CI") # no min depth of 2 reads/sample (cf 1% relative keep)
-hala_rrcurve_groups
+hala_rrcurve_groups0
+
+hala_rrcurve_groups1 <- phyloseq.extended::ggrare(hala_grp_12, step = 10, color = "specification", label="sample_id",plot=F, se=T)+ 
+  facet_wrap(~year)
+hala_rrcurve_groups1
+
+hala_rrcurve_groups2 <- phyloseq.extended::ggrare(hala_grp_18, step = 10, color = "specification", label="sample_id",plot=F, se=T)+ 
+  facet_wrap(~year)
+hala_rrcurve_groups2
 ```
 ```{r circle graph: genus distribution among treatments}
 circle_pq(physeq = hala_ecm, 
@@ -486,8 +483,8 @@ genus_nb_hala5 # 18 genus
 ```
 ## 4.2.1 bivariate analysis
 ```{r rarecurve}
-hala5_rrcurve <- phyloseq.extended::ggrare(hala5_ecm, step = 10, color = "treatment", label="sample_id",plot=F, se=T) 
-hala5_rrcurve
+hala5_rrcurve0 <- phyloseq.extended::ggrare(hala5_grp, step = 10, color = "treatment", label="sample_id",plot=F, se=T) 
+hala5_rrcurve0
 ###
 hala5_rrcurve_groups <- microbiomeutilities::plot_alpha_rcurve(hala5_ecm, index="observed", 
                        subsamples = c(2,100,250,500,750,1000),
@@ -639,8 +636,11 @@ genus_nb_fanga # 15 genus
 ```
 ## 5.2.1 bivariate analysis
 ```{r rarecurve}
-fanga_rrcurve <- phyloseq.extended::ggrare(fanga_ecm, step = 10, color = "treatment", label="sample_id",plot=F, se=T)  + facet_wrap(~year)
-fanga_rrcurve
+fanga_rrcurve0 <- phyloseq.extended::ggrare(fanga_grp_12, step = 10, color = "treatment", label="sample_id",plot=F, se=T)+ facet_wrap(~year) 
+fanga_rrcurve0
+
+fanga_rrcurve1 <- phyloseq.extended::ggrare(fanga_grp_18, step = 10, color = "treatment", label="sample_id",plot=F, se=T)+ facet_wrap(~year)
+fanga_rrcurve1
 ###
 fanga_rrcurve_groups <- microbiomeutilities::plot_alpha_rcurve(fanga_ecm, index="observed", 
                        subsamples = c(2,100,250,500,750,1000),

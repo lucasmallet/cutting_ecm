@@ -113,6 +113,12 @@ fanga_ecm <- subset_samples(ecm_phy, ecm_phy@sam_data$site=="Fangamon") %>% clea
 hala_ecm <- subset_samples(ecm_phy, ecm_phy@sam_data$site=="Halasen") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
 hala5_ecm <- subset_samples(ecm_phy, ecm_phy@sam_data$site=="Halasen_p_5") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
 
+fanga_ecm_12 <- subset_samples(fanga_ecm, fanga_ecm@sam_data$year=="2012") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
+hala_ecm_12 <- subset_samples(hala_ecm, hala_ecm@sam_data$year=="2012") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
+
+fanga_ecm_18 <- subset_samples(fanga_ecm, fanga_ecm@sam_data$year=="2018") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
+hala_ecm_18 <- subset_samples(hala_ecm, hala_ecm@sam_data$year=="2018") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
+
 fanga_sapr <- subset_samples(sapr_phy, sapr_phy@sam_data$site=="Fangamon") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
 hala_sapr <- subset_samples(sapr_phy, sapr_phy@sam_data$site=="Halasen") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
 hala5_sapr <- subset_samples(sapr_phy, sapr_phy@sam_data$site=="Halasen_p_5") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
@@ -161,7 +167,41 @@ hala_ecm@sam_data$specification <- plyr::revalue(hala_ecm@sam_data$specification
                            c("middle"="CC_middle", 
                              "edge"="CC_edge"))
 as.factor(hala_ecm@sam_data$specification) %>% droplevels() %>% levels()
+########
+# also for 12 and 18
+## 12
+hala_ecm_12@sam_data$specification <- plyr::revalue(hala_ecm_12@sam_data$specification,
+                           c("edge_north"="edge", 
+                             "edge_south"="edge",
+                             "kant_norra"="edge", 
+                             "middle_lower"="middle", 
+                             "middle_upper"="middle",
+                             "midle"="middle"))
+as.factor(hala_ecm_12@sam_data$specification) %>% droplevels() %>% levels()
 
+hala_ecm_12@sam_data <- within(hala_ecm_12@sam_data, specification[specification=="middle" & treatment=="forest"] <- "FOR_middle") 
+
+hala_ecm_12@sam_data$specification <- plyr::revalue(hala_ecm_12@sam_data$specification,
+                           c("middle"="CC_middle", 
+                             "edge"="CC_edge"))
+as.factor(hala_ecm_12@sam_data$specification) %>% droplevels() %>% levels()
+########
+## 18
+hala_ecm_18@sam_data$specification <- plyr::revalue(hala_ecm_18@sam_data$specification,
+                           c("edge_north"="edge", 
+                             "edge_south"="edge",
+                             "kant_norra"="edge", 
+                             "middle_lower"="middle", 
+                             "middle_upper"="middle",
+                             "midle"="middle"))
+as.factor(hala_ecm_18@sam_data$specification) %>% droplevels() %>% levels()
+
+hala_ecm_18@sam_data <- within(hala_ecm_18@sam_data, specification[specification=="middle" & treatment=="forest"] <- "FOR_middle") 
+
+hala_ecm_18@sam_data$specification <- plyr::revalue(hala_ecm_18@sam_data$specification,
+                           c("middle"="CC_middle", 
+                             "edge"="CC_edge"))
+as.factor(hala_ecm_18@sam_data$specification) %>% droplevels() %>% levels()
 # also for the transposed physeq object 
 hala_ecm_t@sam_data$specification <- plyr::revalue(hala_ecm_t@sam_data$specification,
                            c("edge_north"="edge", 
@@ -178,5 +218,13 @@ hala_ecm_t@sam_data$specification <- plyr::revalue(hala_ecm_t@sam_data$specifica
                            c("middle"="CC_middle", 
                              "edge"="CC_edge"))
 as.factor(hala_ecm_t@sam_data$specification) %>% droplevels() %>% levels()
+```
+```{r grouping by factor of insterest}
+hala_grp_12 <- merge_group(hala_ecm_12, group = "specification",)
+hala_grp_18 <- merge_group(hala_ecm_18, group = "specification",)
+hala5_grp <- merge_group(hala5_ecm, group = "treatment")
+fanga_grp_12 <- merge_group(fanga_ecm_12, group = "treatment")
+fanga_grp_18 <- merge_group(fanga_ecm_18, group = "treatment")
+
 ```
 
