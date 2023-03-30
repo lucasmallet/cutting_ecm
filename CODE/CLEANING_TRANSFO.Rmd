@@ -63,9 +63,12 @@ not_samples_kept <- c("sITS-standard2", "sITS-standard1", "sPCR_neg_1", "sPCR_ne
 samples_kept_pq <- otu[, colnames(otu) %in% not_samples_kept]
 otu <- otu[, !(colnames(otu) %in% not_samples_kept)] # suppressing from dataset 
 
+
+
 otu1 <- matrix(as.numeric(unlist(otu)),
               ncol = ncol(otu),
               nrow = nrow(otu)) # puting array numeric and transforming in matrix for further functions 
+
 ```
 ```{r row and colnames re-attribution (after being deleted from matrix transfo)}
 rownames(otu1) <- rownames(otu)
@@ -78,14 +81,36 @@ otu_relative <- prop.table(otu1, margin=2) # margin = 2 -> column sum and relati
 verif_sum <- colSums(otu_relative) %>% summary() %>% print() # # verification: ok if 1 and some NAs
 otu_sup0.01 <- ifelse(otu_relative>0.01,otu1,0) # creating a new matrix where <1% reads are deleted 
 ```
+```{r otu rarefaction}
+otu_t <- t(otu_sup0.01)
+otu1_t <- matrix(as.numeric(unlist(otu_t)),
+              ncol = ncol(otu_t),
+              nrow = nrow(otu_t))
+rownames(otu1_t) <- rownames(otu_t)
+colnames(otu1_t) <- colnames(otu_t)
+
+otu_t_rarefied <- as.data.frame(rrarefy(otu1_t, min(rowSums(otu1_t))))
+
+otu_t_rarefied <- t(otu_t_rarefied)
+otu_t_rarefied <- matrix(as.numeric(unlist(otu_t_rarefied)),
+              ncol = ncol(otu_t_rarefied),
+              nrow = nrow(otu_t_rarefied))
+
+rownames(otu_t_rarefied) <- rownames(otu)
+colnames(otu_t_rarefied) <- colnames(otu)
+```
+
 *CREATION OF PHYSEQ OBJECTS*
 ```{r physeq objects}
 # creating the physeq objects 
-otu_phy <- otu_table(otu_sup0.01, taxa_are_rows = TRUE)
+
+otu_phy <- otu_table(otu_t_rarefied, taxa_are_rows = TRUE)
+#otu_phy <- otu_table(otu_sup0.01, taxa_are_rows = TRUE)
 taxeco_phy <- phyloseq::tax_table(taxeco2)
 sam_phy <- sample_data(sam)
 
 # general physeq object
+
 physeq <- phyloseq(otu_phy,taxeco_phy,sam_phy) 
 sample_names(physeq) # 154 samples, as expected 
 ```

@@ -26,6 +26,53 @@ for ggplot: position = fill -> relative abundance
 - synthetic tab for MM 
 - ID the missing samples (and create a design table)
 
+~~ 27/03/23
+
+- Automatic taxonomic attribution for the 3050 not manually IDed clusters. Using a local database (Soil Inventory 2012 - 2019) on computer and ID automatically Genus based on 90% threshold similarity for sequences. Use the closest match if this is >90%, otherwise => unknown
+  Then taxa-ecologic attribution with "FUNGuild-like" database directly into R. 
+  # You don’t have to use FUNGuild – species are already denoted as “ECM” in the Soil Inventory database (but if you use FUNGuild you should hopefully get the same output.
+
+
+- If sequencing depth of samples are even:
+  -- Rarefying OTU matrix by considering all 4050 OTU clusters. Apply rarefaction for the lowest number of reads (ie sequencing depth) for each sample. 
+ # Yes, and if you have some few samples with few reads, you may consider omitting these samples rather than rarefying all samples to a very low sequencing depth. Alternatively, you can skip rarefying and instead include sqrt(sequencing depth) as covariate in statistical models (but it is a bit more complicated to explain and interpret).
+  
+  -> But what about the really low number of reads in for some clusters among samples (especially clearcut where available DNA is low) ?
+- If not:
+  -- Doing model and : sqrt(reads)
+  # exactly, however fungal DNA is usually not so low on clearcuts (although it is mainly free-living fungi and not ECM).
+
+
+- Biais in FUNGuild to consider: "ECM" are far more studied and then so, when there is a matching attribution -> confident ; but for "SF (Saprophytic Fungi)", less sure. A lot of them are not identified as SF in database, even if they are, because of lacking studies. 
+  -> ECM and "others" (saprobes, root-associated, parasitic)
+  
+- Halasen edge study: spatial dependence among samples inside a same plot (distant from 7.5 meters from each other) but independence of others plots 
+  -> Should we consider the factor "plot" as random variable or just the concerned ones ? If so, how to do it ? GLMM, paired-ANOVA ? 
+  # Yes, you should probably use ”plot” as a random variable in a GLMM.
+  
+-  to limit effect of dominant OTU (high nb of reads):
+Hellinger transformation is sqrt (reads of species / total reads in sample) ie sqrt (relative abudances)
+
+ - Zero occurence of OTUs or no reads in some samples -> leads to a biais:
+  -- considering the samples with 0 OTU counted: min richness = 0 & N(samples) unchanged -> good for design
+  
+  -- not considering them (ie erasing samples with 0 from dataset): min richness = 1 & N(samples) reduced -> no significant differences in mean comparison tests"
+
+#Rarefaction
+Data.rar<-as.data.frame(rrarefy(data, min(rowSums(data))))
+ 
+#Hellinger transformation
+data.hel<-as.data.frame(t(apply(data,1,function(x) sqrt(x/sum(x)))))
+ 
+For automatic ID you will have to make a local blast database (https://www.ncbi.nlm.nih.gov/books/NBK569841/). I do this on the Mykopat grid. Then you blast your sequences against this database, using a custom output format. This is what a script can look like if you run it on the Mykopat grid:
+ 
+#$-l h_rt=24:0:0
+#$-l h_vmem=1G
+#$-m ae
+module load ncbi-blast+
+blastn –db local_databse -query query_sequences.fst -out Output_file.txt -remote -max_target_seqs 1 -outfmt "6 qseqid sseqid evalue pident"
+
+
 # *0 LIBRARIES - FUNCTIONS - PALETTES* 
 ```{r libraries}
 library(plyr)
@@ -291,6 +338,7 @@ read_distrib <- plot_read_distribution(
   plot.type = "density")+
   xlab("Reads per site")+
   ggtitle("Distribution of the number of reads per site")
+read_distrib
 
 # rarecurve by samplings
 ecm_phy_rrcurve <- phyloseq.extended::ggrare(physeq = ecm_phy, 
@@ -303,6 +351,7 @@ ecm_phy_rrcurve <- phyloseq.extended::ggrare(physeq = ecm_phy,
   ggtitle("Rarefaction curves of samples per site")+
   xlab("Number of reads")+
   ylab("OTU richness")
+ecm_phy_rrcurve
 
 # rarecurve by groups (and confidence interval)
 ecm_phy_rrcurve_group <- microbiomeutilities::plot_alpha_rcurve(ecm_phy, index="observed", 
