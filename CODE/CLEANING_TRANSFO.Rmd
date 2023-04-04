@@ -17,11 +17,30 @@ library(ggVennDiagram) # venn diagrams
 library(phyloseq.extended) # phyloseq packages with more options
 library (microbiomeutilities) # for rarefaction curves
 library("multcompView") # Visualizations of Paired Comparisons
+library(plyr)
+library(pals)
 ```
 *DATA IMPORTATION AND MODIF* 
+```{r raw_data}
+setwd("H:/REDACTION/RESULTS/cutting_ecm/TRANSF_DATA2") 
+#data run
+run_data <- read.table("run_data.txt",header=T,sep="\t",na.strings=T,dec=".")
+colnames(run_data)
+
+# all clusters
+raw_clust <- read.table("raw_clusters.txt",header=T,sep="\t",na.strings=T,dec=".") %>% 
+arrange(desc(Cluster_Size))
+raw_clust[raw_clust==""] <- NA
+raw_clust[,4] <- as.character(raw_clust[,4])
+
+raw_f_clust <- subset(raw_clust,!grepl("PLANT|NF",raw_clust[,4]))
+raw_nf_clust <- subset(raw_clust,grepl("PLANT|NF",raw_clust[,4]))
+
+# 
+
+```
 ```{r tax-eco table }
 # only the 1st 1000 clusters 
-setwd("H:/REDACTION/RESULTS/cutting_ecm/TRANSF_DATA2") 
 taxeco <- read.table("tax_table.txt",header=T,sep="\t") # change #N/A in excel in NA
 length(taxeco) # number of columns 
 length(rownames(taxeco)) # number of rows (ie clusters, 1st 1000 fungi)
@@ -79,40 +98,95 @@ colnames(taxeco2) <- colnames(taxeco1)
 ```{r otu <1% suppresion}
 otu_relative <- prop.table(otu1, margin=2) # margin = 2 -> column sum and relative abundances
 verif_sum <- colSums(otu_relative) %>% summary() %>% print() # # verification: ok if 1 and some NAs
-otu_sup0.01 <- ifelse(otu_relative>0.01,otu1,0) # creating a new matrix where <1% reads are deleted 
+otu_001 <- ifelse(otu_relative>0.01,otu1,0) # creating a new matrix where <1% reads are deleted
+otu_notrarefied <- otu_001
 ```
+```{r hellinger transformation}
+otu_hellinger <- sapply(otu_relative, sqrt)
+otu_hellinger <- matrix(as.numeric(unlist(otu_hellinger)),
+              ncol = ncol(otu_001),
+              nrow = nrow(otu_001))
+rownames(otu_hellinger) <- rownames(otu_001)
+colnames(otu_hellinger) <- colnames(otu_001)
+```
+
 ```{r otu rarefaction}
-otu_t <- t(otu_sup0.01)
-otu1_t <- matrix(as.numeric(unlist(otu_t)),
+otu_t <- t(otu_001)
+otu_t <- matrix(as.numeric(unlist(otu_t)),
               ncol = ncol(otu_t),
               nrow = nrow(otu_t))
-rownames(otu1_t) <- rownames(otu_t)
-colnames(otu1_t) <- colnames(otu_t)
+rownames(otu_t) <- rownames(otu_t)
+colnames(otu_t) <- colnames(otu_t)
 
-otu_t_rarefied <- as.data.frame(rrarefy(otu1_t, min(rowSums(otu1_t))))
+otu_rarefied <- as.data.frame(rrarefy(otu_t, min(rowSums(otu_t))))
+otu_rarefied <- t(otu_rarefied)
+otu_rarefied <- matrix(as.numeric(unlist(otu_rarefied)),
+              ncol = ncol(otu_rarefied),
+              nrow = nrow(otu_rarefied))
 
-otu_t_rarefied <- t(otu_t_rarefied)
-otu_t_rarefied <- matrix(as.numeric(unlist(otu_t_rarefied)),
-              ncol = ncol(otu_t_rarefied),
-              nrow = nrow(otu_t_rarefied))
+rownames(otu_rarefied) <- rownames(otu)
+colnames(otu_rarefied) <- colnames(otu)
 
-rownames(otu_t_rarefied) <- rownames(otu)
-colnames(otu_t_rarefied) <- colnames(otu)
+richness_allc <- specnumber(t(otu_rarefied))
+summary(richness_allc)
+hist(richness_allc)
+
+reads_sum_per_sample <- rowSums(otu_t) 
+summary(reads_sum_per_sample)
+hist(reads_sum_per_sample) # rarefying based on the min sample depth (here 419)
+low_seqdepth_samples <- which(reads_sum_per_sample < 1108) %>% data.frame() # samples with sequencing depth < 1108 (Q1)
+list_low_seqdepth_samples <- dput(as.character(rownames(low_seqdepth_samples))) # convert into the format c(x; y; ...; z)
+
+# View(sam[list_low_seqdepth_samples,])
+## check pool 1 2 sequencing depth difference
 ```
 
 *CREATION OF PHYSEQ OBJECTS*
 ```{r physeq objects}
 # creating the physeq objects 
-
-otu_phy <- otu_table(otu_t_rarefied, taxa_are_rows = TRUE)
-#otu_phy <- otu_table(otu_sup0.01, taxa_are_rows = TRUE)
+otu_phy_rarefied <- otu_table(otu_rarefied, taxa_are_rows = TRUE)
+otu_phy_notrarefied <- otu_table(otu_notrarefied, taxa_are_rows = TRUE)
+otu_phy_hellinger <- otu_table(otu_hellinger, taxa_are_rows = TRUE)
+otu_phy_relative <- otu_table(otu_relative, taxa_are_rows = TRUE)
 taxeco_phy <- phyloseq::tax_table(taxeco2)
 sam_phy <- sample_data(sam)
 
 # general physeq object
+physeq <- phyloseq(otu_phy_rarefied,taxeco_phy,sam_phy) 
+# otu_phy_rarefied
+# otu_phy_notrarefied
+# otu_phy_hellinger
+# otu_phy_relative
+physeq_rarefied <- phyloseq(otu_phy_rarefied,taxeco_phy,sam_phy) 
+physeq_notrarefied <- phyloseq(otu_phy_notrarefied,taxeco_phy,sam_phy) 
+physeq_hellinger <- phyloseq(otu_phy_hellinger,taxeco_phy,sam_phy) 
+physeq_relative <- phyloseq(otu_phy_relative,taxeco_phy,sam_phy) 
 
-physeq <- phyloseq(otu_phy,taxeco_phy,sam_phy) 
 sample_names(physeq) # 154 samples, as expected 
+```
+```{r sequencing depth changing between pool ?}
+physeq_notrarefied_p1 <- subset_samples(physeq_notrarefied, physeq_notrarefied@sam_data$pool=="1") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
+
+physeq_notrarefied_p2 <- subset_samples(physeq_notrarefied, physeq_notrarefied@sam_data$pool=="2") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
+
+reads_sum_per_sample <- rowSums(t(physeq_notrarefied@otu_table))
+summary(reads_sum_per_sample)
+hist(reads_sum_per_sample)
+
+readsp1_sum_per_sample <- rowSums(t(physeq_notrarefied_p1@otu_table))
+summary(readsp1_sum_per_sample)
+hist(readsp1_sum_per_sample)
+
+readsp2_sum_per_sample <- rowSums(t(physeq_notrarefied_p2@otu_table)) 
+summary(readsp2_sum_per_sample)
+hist(readsp2_sum_per_sample)
+
+boxplot(reads_sum_per_sample ~ physeq_notrarefied@sam_data$pool)
+boxplot(reads_sum_per_sample ~ physeq_notrarefied@sam_data$site)
+
+lm_seq_depth <- lm(reads_sum_per_sample ~ physeq_notrarefied@sam_data$pool + physeq_notrarefied@sam_data$site)
+anova(lm_seq_depth)
+kruskal.test(reads_sum_per_sample, physeq_notrarefied@sam_data$pool)
 ```
 ```{r taxa attribution mistakes}
 # reattribution of correct names
@@ -124,6 +198,10 @@ physeq@tax_table[physeq@tax_table == "Inocybe_geophylla"] <- "Inocybe_geophylla_
 ```{r susbsets primary}
 # subsetting based on sites and guilds 
 # CTRL F + remove_empty_samples = T <-> remove_empty_samples = F
+
+ecm_raw <- subset(taxeco,taxeco$primary_lifestyle=="ectomycorrhizal") %>% arrange(desc(Cluster_Size))
+sapr_raw <- subset(taxeco,taxeco$primary_lifestyle!="ectomycorrhizal") %>% arrange(desc(Cluster_Size))
+
 ecm_phy <- subset_taxa(physeq, primary_lifestyle=="ectomycorrhizal") 
 ecm_phy <- subset_samples(ecm_phy, (ecm_phy@sam_data$site!="control")) %>% 
 clean_pq(remove_empty_samples = FALSE,remove_empty_taxa = T, clean_samples_names = F)
@@ -231,6 +309,8 @@ hala_grp_18 <- merge_group(hala_ecm_18, group = "specification",)
 hala5_grp <- merge_group(hala5_ecm, group = "treatment")
 fanga_grp_12 <- merge_group(fanga_ecm_12, group = "treatment")
 fanga_grp_18 <- merge_group(fanga_ecm_18, group = "treatment")
-
 ```
+
+
+
 

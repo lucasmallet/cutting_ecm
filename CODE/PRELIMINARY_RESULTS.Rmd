@@ -13,6 +13,8 @@ controls:
 alt+o = close all 
 shift+alt+o = open all
 
+dput(as.character(samples_missing_postscata)) # convert into the format c(x; y; ...; z)
+
 for ggplot: position = fill -> relative abundance 
 # *REMAINS TO DO* 
 - rarefactions pb 
@@ -58,30 +60,24 @@ Hellinger transformation is sqrt (reads of species / total reads in sample) ie s
   
   -- not considering them (ie erasing samples with 0 from dataset): min richness = 1 & N(samples) reduced -> no significant differences in mean comparison tests"
 
-#Rarefaction
+Rarefaction
 Data.rar<-as.data.frame(rrarefy(data, min(rowSums(data))))
  
-#Hellinger transformation
+Hellinger transformation
+
 data.hel<-as.data.frame(t(apply(data,1,function(x) sqrt(x/sum(x)))))
  
 For automatic ID you will have to make a local blast database (https://www.ncbi.nlm.nih.gov/books/NBK569841/). I do this on the Mykopat grid. Then you blast your sequences against this database, using a custom output format. This is what a script can look like if you run it on the Mykopat grid:
  
-#$-l h_rt=24:0:0
-#$-l h_vmem=1G
-#$-m ae
+$-l h_rt=24:0:0
+$-l h_vmem=1G
+$-m ae
 module load ncbi-blast+
 blastn –db local_databse -query query_sequences.fst -out Output_file.txt -remote -max_target_seqs 1 -outfmt "6 qseqid sseqid evalue pident"
 
 
-# *0 LIBRARIES - FUNCTIONS - PALETTES* 
-```{r libraries}
-library(plyr)
-library(pals)
-library(ggplot2)
-library(dplyr)
-library(tidyverse)
-library(vegan)
-```
+# *0 FUNCTIONS - PALETTES* 
+
 ```{r dummy graphs}
 list_mm <- lsf.str("package:MiscMetabar") 
 factor(list_mm)
@@ -111,25 +107,6 @@ outersect <- function(x, y) {
 } # extract uncommon values between x - y 
 ```
 # *1 MM RESULTS*
-## IMPORTATION DATA
-```{r data import and some modifs}
-# tax-eco table
-setwd("H:/REDACTION/RESULTS/cutting_ecm/TRANSF_DATA2") # to change, depending on which
-
-#data run
-run_data <- read.table("run_data.txt",header=T,sep="\t",na.strings=T,dec=".")
-colnames(run_data)
-
-# clust all
-raw_clust <- read.table("raw_clusters.txt",header=T,sep="\t",na.strings=T,dec=".") %>% 
-arrange(desc(Cluster_Size))
-raw_clust[raw_clust==""] <- NA
-raw_clust[,4] <- as.character(raw_clust[,4])
-
-raw_f_clust <- subset(raw_clust,!grepl("PLANT|NF",raw_clust[,4]))
-ecm_raw <- subset(taxeco,taxeco$primary_lifestyle=="ectomycorrhizal") %>% arrange(desc(Cluster_Size))
-sapr_raw <- subset(taxeco,taxeco$primary_lifestyle!="ectomycorrhizal") %>% arrange(desc(Cluster_Size))
-```
 ## DATA RUN
 ```{r results mm}
 colnames(run_data) 
@@ -322,6 +299,135 @@ levels(clusters_reads_inctrl) # clusters where we found reads in controls sample
 ## -> should we erase them for dataset ? 
 ## surely, imo 
 ```
+```{r rarefaction and hellinger transformation comparison}
+###### distribution
+all_distrib_raref <- plot_read_distribution(
+  physeq, groups = "site", 
+  plot.type = "density")+
+  xlab("Reads per site")+
+  ggtitle("Distribution of the number of reads per site")
+all_distrib_raref
+
+all_distrib_notraref <- plot_read_distribution(
+  physeq_notrarefied, groups = "site", 
+  plot.type = "density")+
+  xlab("Reads per site")+
+  ggtitle("Distribution of the number of reads per site")
+all_distrib_notraref
+
+all_distrib_relative <- plot_read_distribution(
+  physeq_relative, groups = "site", 
+  plot.type = "density")+
+  xlab("Reads per site")+
+  ggtitle("Distribution of the number of reads per site")
+all_distrib_relative
+
+all_distrib_hellinger <- plot_read_distribution(
+  physeq_hellinger, groups = "site", 
+  plot.type = "density")+
+  xlab("Reads per site")+
+  ggtitle("Distribution of the number of reads per site")
+all_distrib_hellinger
+
+####### raref 
+all_curve_raref <- phyloseq.extended::ggrare(physeq = physeq, 
+                                             step = 10, 
+                                             color = "year", 
+                                             label="sample_id",
+                                             plot=F, 
+                                             se=T)+ 
+  facet_wrap(~site)+
+  ggtitle("Rarefaction curves of samples per site")+
+  xlab("Number of reads")+
+  ylab("OTU richness")
+all_curve_raref
+
+all_curve_raref_group <- phyloseq.extended::ggrare(physeq, step = 10, color = "site",plot=F, se=T, label = "sample_id")+ 
+  labs(x = "Group size",
+       y =  "OTU richness",
+       title = "rarefaction curves by samples",
+       color = "Treatment")+
+  guides(fill = F) # Suppressing the filling (standard error) legend 
+all_curve_raref_group
+
+all_curve_notraref_group <- phyloseq.extended::ggrare(physeq_notrarefied, step = 10, color = "site",plot=F, se=T, label = "sample_id")+ 
+  labs(x = "Group size",
+       y =  "OTU richness",
+       title = "rarefaction curves by samples",
+       color = "Treatment")+
+  guides(fill = F) # Suppressing the filling (standard error) legend 
+all_curve_notraref_group
+
+all_curve_notraref_group <- phyloseq.extended::ggrare(physeq_relative, step = 10, color = "site",plot=F, se=T, label = "sample_id")+ 
+  labs(x = "Group size",
+       y =  "OTU richness",
+       title = "rarefaction curves by samples",
+       color = "Treatment")+
+  guides(fill = F) # Suppressing the filling (standard error) legend 
+all_curve_notraref_group
+
+######### multivariate
+## hellinger
+all_mdsbray_hellinger <- ordinate(physeq_hellinger, method = "MDS", dist="bray")
+all_mdsbray_hellinger <- plot_ordination(physeq_hellinger, all_mdsbray_hellinger, type="samples", color="site",label="sample_id")+
+  geom_point(size=2)+
+  facet_wrap(~year)+
+  # color and elipse
+  scale_color_manual(values = c("Halasen_p_5" = "blue3",
+                              "Halasen" = "green4",
+                              "Fangamon" = "darkorange"))+
+  stat_ellipse(type="t", level=0.70)+
+  # legend
+  guides(color=guide_legend(title="position from CC"))+
+  ggtitle(label = "MDS of samples from Halasen_edge by year", subtitle="presence-absence (brayard distance)")
+all_mdsbray_hellinger
+
+## justabundance
+all_mdsbray_relativeab <- ordinate(physeq_relative, method = "MDS", dist="bray")
+all_mdsbray_relativeab <- plot_ordination(physeq_relative, all_mdsbray_relativeab, type="samples", color="site",label="sample_id")+
+  geom_point(size=2)+
+  facet_wrap(~year)+
+  # color and elipse
+  scale_color_manual(values = c("Halasen_p_5" = "blue3",
+                              "Halasen" = "green4",
+                              "Fangamon" = "darkorange"))+
+  stat_ellipse(type="t", level=0.70)+
+  # legend
+  guides(color=guide_legend(title="position from CC"))+
+  ggtitle(label = "MDS of samples from Halasen_edge by year", subtitle="presence-absence (brayard distance)")
+all_mdsbray_relativeab
+
+## not rarefied
+all_mdsbray_notrarefied <- ordinate(physeq_notrarefied, method = "MDS", dist="bray")
+all_mdsbray_notrarefied <- plot_ordination(physeq_notrarefied, all_mdsbray_notrarefied, type="samples", color="site",label="sample_id")+
+  geom_point(size=2)+
+  facet_wrap(~year)+
+  # color and elipse
+  scale_color_manual(values = c("Halasen_p_5" = "blue3",
+                              "Halasen" = "green4",
+                              "Fangamon" = "darkorange"))+
+  stat_ellipse(type="t", level=0.70)+
+  # legend
+  guides(color=guide_legend(title="position from CC"))+
+  ggtitle(label = "MDS of samples from Halasen_edge by year", subtitle="presence-absence (brayard distance)")
+all_mdsbray_notrarefied
+
+## rarefied
+all_mdsbray_rarefied <- ordinate(physeq, method = "MDS", dist="bray")
+all_mdsbray_rarefied <- plot_ordination(physeq, all_mdsbray_rarefied, type="samples", color="site",label="sample_id")+
+  geom_point(size=2)+
+  facet_wrap(~year)+
+  # color and elipse
+  scale_color_manual(values = c("Halasen_p_5" = "blue3",
+                              "Halasen" = "green4",
+                              "Fangamon" = "darkorange"))+
+  stat_ellipse(type="t", level=0.70)+
+  # legend
+  guides(color=guide_legend(title="position from CC"))+
+  ggtitle(label = "MDS of samples from Halasen_edge by year", subtitle="presence-absence (brayard distance)")
+all_mdsbray_rarefied
+```
+
 # *2 OVERVIEW DATA FROM SITES*
 ```{r between sites}
 
@@ -352,18 +458,6 @@ ecm_phy_rrcurve <- phyloseq.extended::ggrare(physeq = ecm_phy,
   xlab("Number of reads")+
   ylab("OTU richness")
 ecm_phy_rrcurve
-
-# rarecurve by groups (and confidence interval)
-ecm_phy_rrcurve_group <- microbiomeutilities::plot_alpha_rcurve(ecm_phy, index="observed", 
-                       subsamples = seq(2,2000,by=50),
-                       lower.conf = , 
-                       upper.conf = ,
-                       group="site",
-                       label.color = "brown3",
-                       label.size = 3,
-                       label.min = TRUE,
-                       type = "CI") 
-ecm_phy_rrcurve_group
 ```
 # *3 HALASEN STUDY: edge retention trees*
 ## 3.1 design and sampling
