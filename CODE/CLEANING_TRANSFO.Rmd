@@ -3,6 +3,8 @@ title: "Prelim_results"
 output: html_document
 date: "2023-03-06"
 ---
+*NOTES*
+TOASK : ctrl + F this and search 
 *LIBRARY*
 ```{r packages}
 library(ggplot2) # Create Elegant Data Visualisations Using the Grammar of Graphics
@@ -150,11 +152,25 @@ nrow(otu_all) # total number of all clusters (ie fungi ecm or no-ecm, plants)
 rownames(otu_all) <- otu_all$Cluster_ID
 otu_all <- otu_all[-1] # deleting 1st column (cluster_id is now in rownames)
 colnames(otu_all)
+cluster_names_otu_all <- rownames(otu_all)
 
+# removing clusters with 0 rowsums 
+## relics of PCR mismatch tag (still amplified)
+## but clusters still there after the exclusion of mismatch tags (eg ITS7-49 x ITS4-48)
+
+otu_all <- sapply(otu_all, as.numeric) %>% as.data.frame()
+rownames(otu_all) <- cluster_names_otu_all
+which(rowSums(otu_all) == 0)
+otu <- otu_all %>%
+  filter(!rowSums(otu_all) ==0)
+
+# controls and samples with 0 exclusion 
 not_samples_kept <- c("sITS-standard2", "sITS-standard1", "sPCR_neg_1", "sPCR_neg_2", "sQ2", "s49", "s97") # cf MM_RESULTS.Rmd ```{r DESIGN SAMPLES}  to understand how they are found 
 
-samples_kept_pq <- otu[, colnames(otu) %in% not_samples_kept]
-otu_samples_out <- otu_all[, !(colnames(otu_all) %in% not_samples_kept)] # suppressing from dataset 
+samples_kept_pq <- otu[, colnames(otu) %in% not_samples_kept] 
+clusters_in_controls <- which(samples_kept_pq >0, arr.ind = T) %>% 
+  rownames() %>% as.factor() %>% levels() %>% print() # 13 clusters found in controls samples
+otu_samples_out <- otu[, !(colnames(otu) %in% not_samples_kept)] # suppressing from dataset 
 
 # excluding NF clusters to rarefy only with fungi
 otu <- otu_samples_out %>%
@@ -185,12 +201,12 @@ colnames(otu_hellinger) <- colnames(otu_001)
 verif_sum_hell <- colSums(otu_hellinger) %>% summary() %>% print() # # verification: ok if 1 and some NAs
 ```
 ```{r otu rarefaction}
-otu_t <- t(otu_001)
-otu_t <- matrix(as.numeric(unlist(otu_t)),
-              ncol = ncol(otu_t),
-              nrow = nrow(otu_t))
-rownames(otu_t) <- rownames(otu_t)
-colnames(otu_t) <- colnames(otu_t)
+otu_t0 <- t(otu_001)
+otu_t <- matrix(as.numeric(unlist(otu_t0)),
+              ncol = ncol(otu_t0),
+              nrow = nrow(otu_t0))
+rownames(otu_t) <- rownames(otu_t0)
+colnames(otu_t) <- colnames(otu_t0)
 
 otu_rarefied <- as.data.frame(rrarefy(otu_t, min(rowSums(otu_t))))
 otu_rarefied <- t(otu_rarefied)
@@ -200,19 +216,6 @@ otu_rarefied <- matrix(as.numeric(unlist(otu_rarefied)),
 
 rownames(otu_rarefied) <- rownames(otu)
 colnames(otu_rarefied) <- colnames(otu)
-
-richness_allc <- specnumber(t(otu_rarefied))
-summary(richness_allc)
-hist(richness_allc)
-
-reads_sum_per_sample <- rowSums(otu_t) 
-summary(reads_sum_per_sample)
-hist(reads_sum_per_sample) # rarefying based on the min sample depth (here 419)
-low_seqdepth_samples <- which(reads_sum_per_sample < 300) %>% data.frame() # samples with sequencing depth < 762.2 (Q1)
-list_low_seqdepth_samples <- dput(as.character(rownames(low_seqdepth_samples))) # convert into the format c(x; y; ...; z)
-
-# View(sam[list_low_seqdepth_samples,])
-## check pool 1 2 sequencing depth difference
 ```
 *CREATION OF PHYSEQ OBJECTS*
 ```{r physeq objects}
@@ -226,49 +229,73 @@ taxeco_phy <- phyloseq::tax_table(taxeco)
 sam_phy <- sample_data(sam)
 
 # general physeq object
-physeq <- phyloseq(otu_phy_rarefied,taxeco_phy,sam_phy) 
-# otu_phy_rarefied
-# otu_phy_notrarefied
-# otu_phy_hellinger
-# otu_phy_relative
-physeq_rarefied <- phyloseq(otu_phy_rarefied,taxeco_phy,sam_phy) 
-physeq_notrarefied <- phyloseq(otu_phy_notrarefied,taxeco_phy,sam_phy) 
-physeq_hellinger <- phyloseq(otu_phy_hellinger,taxeco_phy,sam_phy) 
-physeq_relative <- phyloseq(otu_phy_relative,taxeco_phy,sam_phy) 
-physeq_001kept <- phyloseq(otu_phy_001kept,taxeco_phy,sam_phy) 
+physeq <- phyloseq(otu_phy_rarefied,taxeco_phy,sam_phy) %>% 
+clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
+physeq_rarefied <- physeq
+physeq_notrarefied <- phyloseq(otu_phy_notrarefied,taxeco_phy,sam_phy) %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
+# 2822 taxa removed from the <1% relative abundance suppresion. 
 
+physeq_hellinger <- phyloseq(otu_phy_hellinger,taxeco_phy,sam_phy) %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
+physeq_relative <- phyloseq(otu_phy_relative,taxeco_phy,sam_phy) %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
+physeq_001kept <- phyloseq(otu_phy_001kept,taxeco_phy,sam_phy) 
+# 10 taxa = erasing taxa from the control samples (among 13, 3 of them are probably also in others informative samples)
+clusters_in_controls # controls to understand
+
+# verif sample N
 sample_names(physeq)
 length(sample_names(physeq)) # 154 samples, as expected 
-
-physeq <- clean_pq(physeq = physeq, remove_empty_samples = T, remove_empty_taxa = T) # taxa removed from the <1% relative abundance suppresion. 
-physeq_001kept <- clean_pq(physeq = physeq_001kept, remove_empty_samples = T, remove_empty_taxa = T) 
-
-otu_all <- sapply(otu_all, as.numeric) %>% as.data.frame()
-which(rowSums(otu_all) == 0)
 ```
 ```{r sequencing depth changing between pool ?}
-physeq_notrarefied_p1 <- subset_samples(physeq_notrarefied, physeq_notrarefied@sam_data$pool=="1") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
+richness_allc_raref <- specnumber(t(otu_rarefied)) # richness calc (same as nonrarefied ofc) 
+summary(richness_allc_raref) # richness of samples from ALL Fungi clusters
+hist(richness_allc_raref)
 
-physeq_notrarefied_p2 <- subset_samples(physeq_notrarefied, physeq_notrarefied@sam_data$pool=="2") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
+reads_sum_per_sample <- data.frame(rownames(otu_t), rowSums(otu_t)) # after deleting <1% relative abundance
+summary(reads_sum_per_sample) # sum of reads per sample for ALL Fungi clusters 
+shapiro.test(reads_sum_per_sample$rowSums.otu_t.) # normal distribution
+hist(reads_sum_per_sample$rowSums.otu_t.) # rarefying based on the min sample depth (here 419)
+low_seqdepth_samples <- which(reads_sum_per_sample < 300, arr.ind = T) %>% data.frame() %>% print() # samples with sequencing depth under a threshold
+list_low_seqdepth_samples <- dput(as.character(rownames(low_seqdepth_samples))) # convert into the format c(x; y; ...; z)
+# TOASK -> should we delete these samples ? 
+# View(sam[list_low_seqdepth_samples,])
+## check pool 1 2 sequencing depth difference
 
-reads_sum_per_sample <- rowSums(t(physeq_notrarefied@otu_table))
-summary(reads_sum_per_sample)
-hist(reads_sum_per_sample)
+physeq_notrarefied_p1 <- subset_samples(physeq_001kept, physeq_001kept@sam_data$pool=="1") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
 
-readsp1_sum_per_sample <- rowSums(t(physeq_notrarefied_p1@otu_table))
-summary(readsp1_sum_per_sample)
-hist(readsp1_sum_per_sample)
+physeq_notrarefied_p2 <- subset_samples(physeq_001kept, physeq_001kept@sam_data$pool=="2") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
 
-readsp2_sum_per_sample <- rowSums(t(physeq_notrarefied_p2@otu_table)) 
-summary(readsp2_sum_per_sample)
-hist(readsp2_sum_per_sample)
+r_sps <- rowSums(t(physeq_001kept@otu_table)) # r_sps = sum per sample
+summary(r_sps)
+hist(r_sps)
 
-boxplot(reads_sum_per_sample ~ physeq_notrarefied@sam_data$pool)
-boxplot(reads_sum_per_sample ~ physeq_notrarefied@sam_data$site)
+rp1_sps <- rowSums(t(physeq_notrarefied_p1@otu_table))
+summary(rp1_sps)
+pool1 <- 1
+rp1_sps_df <- data.frame("pool" = 1, "sum_reads" = rp1_sps)
 
-lm_seq_depth <- lm(reads_sum_per_sample ~ physeq_notrarefied@sam_data$pool + physeq_notrarefied@sam_data$site)
-anova(lm_seq_depth)
-kruskal.test(reads_sum_per_sample, physeq_notrarefied@sam_data$pool)
+rp2_sps <- rowSums(t(physeq_notrarefied_p2@otu_table)) 
+summary(rp2_sps)
+rp2_sps_df <- data.frame("pool" = 2, "sum_reads" = rp2_sps)
+
+r_sps_df <- bind_rows(rp1_sps_df, rp2_sps_df) 
+r_sps_df$pool <- as.factor(r_sps_df$pool)
+
+# graphical representation
+mu_pool <- ddply(r_sps_df, "pool", summarise, grp.mean=mean(sum_reads)) # calculed mean of each group 
+ggplot(r_sps_df, aes(x = sum_reads, color = pool, fill = pool)) +
+  geom_histogram(aes(y = ..density..), alpha = 0.5, position = "identity")+
+  geom_density(alpha=0.3)+
+  geom_vline(data = mu_pool, aes(xintercept=grp.mean, color= pool),
+           linetype="dashed")
+
+boxplot(r_sps ~ physeq_001kept@sam_data$pool)
+boxplot(r_sps ~ physeq_001kept@sam_data$site)
+
+# statistical test
+lm_seq_depth <- lm(reads_sum_per_sample ~ physeq_001kept@sam_data$pool + physeq_001kept@sam_data$site)
+anova(lm_seq_depth) 
+kruskal.test(r_sps, physeq_001kept@sam_data$pool) # if test conditions arent fulfilled 
+# TOASK seems to be significant difference in seq depth for the pools
 ```
 ```{r taxa attribution mistakes}
 # reattribution of correct names
@@ -283,7 +310,7 @@ physeq@tax_table[physeq@tax_table == "Inocybe_geophylla"] <- "Inocybe_geophylla_
 
 ecm_phy <- subset_taxa(physeq, primary_lifestyle=="ectomycorrhizal") 
 ecm_phy <- subset_samples(ecm_phy, (ecm_phy@sam_data$site!="control")) %>% 
-clean_pq(remove_empty_samples = FALSE,remove_empty_taxa = T, clean_samples_names = F)
+clean_pq(remove_empty_samples = TRUE,remove_empty_taxa = T, clean_samples_names = F)
 sapr_phy <- subset_taxa(physeq, primary_lifestyle!="ectomycorrhizal") %>% 
 clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = F)
 
