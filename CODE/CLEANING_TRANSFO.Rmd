@@ -20,16 +20,37 @@ library("multcompView") # Visualizations of Paired Comparisons
 library(plyr)
 library(pals)
 ```
+```{r color palette}
+pal.bands(alphabet, alphabet2, cols25, glasbey, kelly, polychrome, 
+  stepped, tol, watlington,
+  show.names=FALSE)
+
+funky <- colorRampPalette(c("#A6CEE3","#1F78B4","#B2DF8A",
+"#33A02C","#FB9A99","#E31A1C",
+"#FDBF6F","#FF7F00","#CAB2D6",
+"#6A3D9A","#FFFF99","#B15928"))
+```
+```{r functions}
+outersect <- function(x, y) {
+  sort(c(setdiff(x, y),
+         setdiff(y, x)))
+} # extract uncommon values between x - y 
+```
+```{r dummy calc}
+# hellinger : sum of reads per sample = 1 ? (as same as relative abundance ?)
+
+#abund1 <- c(sample(0:250, n = 10))
+```
 *DATA IMPORTATION AND MODIF* 
 ```{r raw_data}
 setwd("H:/REDACTION/RESULTS/cutting_ecm/TRANSF_DATA2") 
 #data run
-run_data <- read.table("run_data.txt",header=T,sep="\t",na.strings=T,dec=".")
+run_data <- read.table("run_data.txt", header=T, sep="\t",na.strings=T,dec=".")
 colnames(run_data)
 
 # all clusters
-raw_clust <- read.table("raw_clusters.txt",header=T,sep="\t",na.strings=T,dec=".") %>% 
-arrange(desc(Cluster_Size)) # importing and arrange by decreasing cluster size
+raw_clust <- read.table("raw_clusters.txt",header=T,sep="\t",na.strings=T,dec=".") %>%
+  arrange(desc(Cluster_Size)) # importing and arrange by decreasing cluster size
 raw_clust[raw_clust==""] <- NA # putting NA when empty
 raw_clust[,4] <- as.character(raw_clust[,4]) # reference as.character
 raw_clust$Cluster_ID <- gsub('scata5670_','c',raw_clust$Cluster_ID) # replace character occurence in all cells
@@ -45,33 +66,67 @@ raw_nf_clust <- subset(raw_clust,grepl("PLANT|NF",raw_clust[,5]))
 ```
 ```{r tax-eco table }
 # only the 1st 1000 clusters 
-taxeco <- read.table("tax_table.txt",header=T,sep="\t") # change #N/A in excel in NA
-length(taxeco) # number of columns 
-length(rownames(taxeco)) # number of rows (ie clusters, 1st 1000 fungi)
-taxeco[,c(3:length(taxeco))] <- lapply(taxeco[,c(3:length(taxeco))], as.factor) 
-rownames(taxeco) <- taxeco$Cluster_ID # rownames of corresponding clusters
-taxeco1 <- subset(taxeco[,c(3:length(taxeco)),]) 
+taxeco_id <- read.table("tax_table.txt",header=T,sep="\t") # change #N/A in excel in NA
+length(taxeco_id) # number of columns 
+length(rownames(taxeco_id)) # number of rows (ie clusters, 1st 1000 fungi)
+taxeco_id[,c(3:length(taxeco_id))] <- lapply(taxeco_id[,c(3:length(taxeco_id))], as.factor) 
+rownames(taxeco_id) <- taxeco_id$Cluster_ID # rownames of corresponding clusters
+taxeco_0 <- subset(taxeco_id[,c(3:length(taxeco_id)),]) 
 
-taxeco2 <- subset(taxeco[,c(3:length(taxeco)),]) 
+taxeco2 <- subset(taxeco_id[,c(3:length(taxeco_id)),]) 
 taxeco2 <- matrix(as.character(unlist(taxeco2)),
               ncol = ncol(taxeco2),
               nrow = nrow(taxeco2))
 ```
 ```{r subsetting taxtable}
 id_taxeco <- raw_f_clust %>%
-  filter(Cluster_ID %in% taxeco$Cluster_ID) %>%
+  filter(Cluster_ID %in% taxeco_id$Cluster_ID) %>%
   arrange(order) # filtering taxtable identified manually
 id_taxeco <- cbind("MANUAL_ID", id_taxeco)
 
 unid_taxeco <- raw_f_clust %>%
-  filter(!Cluster_ID %in% taxeco$Cluster_ID) %>%
+  filter(!Cluster_ID %in% taxeco_id$Cluster_ID) %>%
   arrange(order) # filtering taxtable not identified 
 
 taxeco_f <- dplyr::bind_rows(id_taxeco, unid_taxeco)
 colnames(taxeco_f)[1] <- "ID_TYPE"
 taxeco_f$ID_TYPE[is.na(taxeco_f$ID_TYPE)] <- "AUTO_ID" 
-```
 
+taxeco_id <- cbind("MANUAL_ID", taxeco_id)
+colnames(taxeco_id)[1] <- "ID_TYPE"
+
+# not same length row between id_taxeco (998) and taxeco (999): not normal, can cause offset
+match_id <- taxeco_id$Cluster_ID %in% id_taxeco$Cluster_ID
+as.factor(match_id) %>% 
+  levels()
+which(match_id == "FALSE", arr.ind = T) # mismatch at row 240
+
+taxeco_id <- taxeco_id[-240,]
+
+match_id <- taxeco_id$Cluster_ID %in% id_taxeco$Cluster_ID # checking if resolved
+as.factor(match_id) %>% 
+  levels()
+which(match_id == "FALSE", arr.ind = T) # good
+
+###
+taxeco_id$Cluster_Size <- id_taxeco$Cluster_Size # reattributing the proper cluster_size values
+
+taxeco1 <- merge(taxeco_f, taxeco_id, all = T) %>%
+  arrange(order) # merging taxeco and idtaxeco 
+
+rownames(taxeco1) <- taxeco1$Cluster_ID
+
+# putting reference of AUTO_ID in OTU_ID
+which(taxeco1[,"ID_TYPE"] == "MANUAL_ID") %>% length() # finding the rows NOT concerned
+taxeco1$OTU_ID <- as.character(taxeco1$OTU_ID) # putting as character for next line
+taxeco1$OTU_ID <- c(taxeco1$OTU_ID[1:998],  taxeco1$Reference[999:length(taxeco1$Reference)]) # merging reference and otu_id 
+  
+# subsetting interesting variables
+colnames(taxeco1)
+taxeco <- taxeco1[, c(17:24,1)]
+taxeco <- sapply(taxeco, as.character) 
+rownames(taxeco) <- rownames(taxeco1) # cluster name in row
+```
 ```{r sample data}
 # sample data
 sam <- read.table("sample_table.txt",header=T,sep="\t",na.strings = T) 
@@ -87,32 +142,32 @@ sam_fanga <- subset(sam, sam$site == "Fangamon") # 69 samples
 sam_controls_na <- filter(sam, !site %in% c("Halasen","Halasen_p_5","Fangamon")) # 19 samples (or controls)
 ```
 ```{r otu table}
-otu <- read.table("otu_table.txt",header=F,sep="\t",na.strings = T) 
-otu = setNames(data.frame(t(otu[,-1])), otu[,1]) # transpose + 1st column (ie samples set as header
+otu_all <- read.table("otu_table.txt",header=F,sep="\t",na.strings = T) 
+otu_all = setNames(data.frame(t(otu_all[,-1])), otu_all[,1]) # transpose + 1st column (ie samples set as header
 ## samples = columns, otu abundance = rows
-colnames(otu)[1] <- "Cluster_ID" # after transposing, resolving pb with headers
-nrow(otu) # total number of all clusters (ie fungi ecm or no-ecm, plants)
-rownames(otu) <- otu$Cluster_ID
-otu <- otu[-1] # deleting 1st column (cluster_id is now in rownames)
-colnames(otu)
+colnames(otu_all)[1] <- "Cluster_ID" # after transposing, resolving pb with headers
+nrow(otu_all) # total number of all clusters (ie fungi ecm or no-ecm, plants)
+rownames(otu_all) <- otu_all$Cluster_ID
+otu_all <- otu_all[-1] # deleting 1st column (cluster_id is now in rownames)
+colnames(otu_all)
 
 not_samples_kept <- c("sITS-standard2", "sITS-standard1", "sPCR_neg_1", "sPCR_neg_2", "sQ2", "s49", "s97") # cf MM_RESULTS.Rmd ```{r DESIGN SAMPLES}  to understand how they are found 
 
 samples_kept_pq <- otu[, colnames(otu) %in% not_samples_kept]
-otu <- otu[, !(colnames(otu) %in% not_samples_kept)] # suppressing from dataset 
+otu_samples_out <- otu_all[, !(colnames(otu_all) %in% not_samples_kept)] # suppressing from dataset 
 
+# excluding NF clusters to rarefy only with fungi
+otu <- otu_samples_out %>%
+  filter(rownames(otu_samples_out) %in% rownames(taxeco))
 
-
+# transfo into matrix
 otu1 <- matrix(as.numeric(unlist(otu)),
               ncol = ncol(otu),
               nrow = nrow(otu)) # puting array numeric and transforming in matrix for further functions 
 
-```
-```{r row and colnames re-attribution (after being deleted from matrix transfo)}
+# re-attribution (after being deleted from matrix transfo)
 rownames(otu1) <- rownames(otu)
 colnames(otu1) <- colnames(otu)
-rownames(taxeco2) <- rownames(taxeco1)
-colnames(taxeco2) <- colnames(taxeco1)
 ```
 ```{r otu <1% suppresion}
 otu_relative <- prop.table(otu1, margin=2) # margin = 2 -> column sum and relative abundances
@@ -127,8 +182,8 @@ otu_hellinger <- matrix(as.numeric(unlist(otu_hellinger)),
               nrow = nrow(otu_001))
 rownames(otu_hellinger) <- rownames(otu_001)
 colnames(otu_hellinger) <- colnames(otu_001)
+verif_sum_hell <- colSums(otu_hellinger) %>% summary() %>% print() # # verification: ok if 1 and some NAs
 ```
-
 ```{r otu rarefaction}
 otu_t <- t(otu_001)
 otu_t <- matrix(as.numeric(unlist(otu_t)),
@@ -153,13 +208,12 @@ hist(richness_allc)
 reads_sum_per_sample <- rowSums(otu_t) 
 summary(reads_sum_per_sample)
 hist(reads_sum_per_sample) # rarefying based on the min sample depth (here 419)
-low_seqdepth_samples <- which(reads_sum_per_sample < 1108) %>% data.frame() # samples with sequencing depth < 1108 (Q1)
+low_seqdepth_samples <- which(reads_sum_per_sample < 300) %>% data.frame() # samples with sequencing depth < 762.2 (Q1)
 list_low_seqdepth_samples <- dput(as.character(rownames(low_seqdepth_samples))) # convert into the format c(x; y; ...; z)
 
 # View(sam[list_low_seqdepth_samples,])
 ## check pool 1 2 sequencing depth difference
 ```
-
 *CREATION OF PHYSEQ OBJECTS*
 ```{r physeq objects}
 # creating the physeq objects 
@@ -167,7 +221,8 @@ otu_phy_rarefied <- otu_table(otu_rarefied, taxa_are_rows = TRUE)
 otu_phy_notrarefied <- otu_table(otu_notrarefied, taxa_are_rows = TRUE)
 otu_phy_hellinger <- otu_table(otu_hellinger, taxa_are_rows = TRUE)
 otu_phy_relative <- otu_table(otu_relative, taxa_are_rows = TRUE)
-taxeco_phy <- phyloseq::tax_table(taxeco2)
+otu_phy_001kept <- otu_table(otu1, taxa_are_rows = TRUE)
+taxeco_phy <- phyloseq::tax_table(taxeco)
 sam_phy <- sample_data(sam)
 
 # general physeq object
@@ -180,8 +235,16 @@ physeq_rarefied <- phyloseq(otu_phy_rarefied,taxeco_phy,sam_phy)
 physeq_notrarefied <- phyloseq(otu_phy_notrarefied,taxeco_phy,sam_phy) 
 physeq_hellinger <- phyloseq(otu_phy_hellinger,taxeco_phy,sam_phy) 
 physeq_relative <- phyloseq(otu_phy_relative,taxeco_phy,sam_phy) 
+physeq_001kept <- phyloseq(otu_phy_001kept,taxeco_phy,sam_phy) 
 
-sample_names(physeq) # 154 samples, as expected 
+sample_names(physeq)
+length(sample_names(physeq)) # 154 samples, as expected 
+
+physeq <- clean_pq(physeq = physeq, remove_empty_samples = T, remove_empty_taxa = T) # taxa removed from the <1% relative abundance suppresion. 
+physeq_001kept <- clean_pq(physeq = physeq_001kept, remove_empty_samples = T, remove_empty_taxa = T) 
+
+otu_all <- sapply(otu_all, as.numeric) %>% as.data.frame()
+which(rowSums(otu_all) == 0)
 ```
 ```{r sequencing depth changing between pool ?}
 physeq_notrarefied_p1 <- subset_samples(physeq_notrarefied, physeq_notrarefied@sam_data$pool=="1") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
@@ -218,9 +281,6 @@ physeq@tax_table[physeq@tax_table == "Inocybe_geophylla"] <- "Inocybe_geophylla_
 # subsetting based on sites and guilds 
 # CTRL F + remove_empty_samples = T <-> remove_empty_samples = F
 
-ecm_raw <- subset(taxeco,taxeco$primary_lifestyle=="ectomycorrhizal") %>% arrange(desc(Cluster_Size))
-sapr_raw <- subset(taxeco,taxeco$primary_lifestyle!="ectomycorrhizal") %>% arrange(desc(Cluster_Size))
-
 ecm_phy <- subset_taxa(physeq, primary_lifestyle=="ectomycorrhizal") 
 ecm_phy <- subset_samples(ecm_phy, (ecm_phy@sam_data$site!="control")) %>% 
 clean_pq(remove_empty_samples = FALSE,remove_empty_taxa = T, clean_samples_names = F)
@@ -230,7 +290,7 @@ clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = F
 fanga <- subset_samples(physeq, physeq@sam_data$site=="Fangamon") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
 hala <- subset_samples(physeq, physeq@sam_data$site=="Halasen") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
 hala5 <- subset_samples(physeq, physeq@sam_data$site=="Halasen_p_5") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
-  
+
 fanga_ecm <- subset_samples(ecm_phy, ecm_phy@sam_data$site=="Fangamon") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
 hala_ecm <- subset_samples(ecm_phy, ecm_phy@sam_data$site=="Halasen") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
 hala5_ecm <- subset_samples(ecm_phy, ecm_phy@sam_data$site=="Halasen_p_5") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
@@ -329,7 +389,3 @@ hala5_grp <- merge_group(hala5_ecm, group = "treatment")
 fanga_grp_12 <- merge_group(fanga_ecm_12, group = "treatment")
 fanga_grp_18 <- merge_group(fanga_ecm_18, group = "treatment")
 ```
-
-
-
-

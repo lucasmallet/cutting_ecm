@@ -90,22 +90,6 @@ circle_allsite_genus <- circle_pq(ecm_phy, "site", taxa = "Phylum", add_nb_seq =
 
 sample_names(ecm_phy)
 ```
-```{r color palette}
-pal.bands(alphabet, alphabet2, cols25, glasbey, kelly, polychrome, 
-  stepped, tol, watlington,
-  show.names=FALSE)
-
-funky <- colorRampPalette(c("#A6CEE3","#1F78B4","#B2DF8A",
-"#33A02C","#FB9A99","#E31A1C",
-"#FDBF6F","#FF7F00","#CAB2D6",
-"#6A3D9A","#FFFF99","#B15928"))
-```
-```{r functions}
-outersect <- function(x, y) {
-  sort(c(setdiff(x, y),
-         setdiff(y, x)))
-} # extract uncommon values between x - y 
-```
 # *1 MM RESULTS*
 ## DATA RUN
 ```{r results mm}
@@ -567,7 +551,7 @@ hala_hill_treatment[[4]]
 hala_hill_treatment[[4]] # TukeyHSD test
 ```
 ```{r barplot genus distribution}
-genus_nb_hala <- as.factor(hala_ecm@tax_table[,5]) %>% droplevels() %>% levels() %>% length()
+genus_nb_hala <- as.factor(hala_ecm@tax_table[,5]) %>% droplevels() %>% levels() %>% length() %>% print()
 ## OTU Genus count (0;1) by treatment
 hala_ecm_ggplot1 <- phyloseq::plot_bar(as_binary_otu_table(hala_ecm), x = "specification") 
 hala_ecm_ggplot1 <- ggplot(hala_ecm_ggplot1$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=specification, y = Abundance))+
@@ -608,7 +592,6 @@ hala_ecm_ggplot3
 ```
 ## 3.2.2 multivariate analysis
 ```{r multivariate representation}
-
 hala_ecm_ordi_mdsjacc <- ordinate(as_binary_otu_table(hala_ecm), method = "MDS", dist="jaccard")
 hala_ecm_ordi_mdsjacc <- plot_ordination(hala_ecm, hala_ecm_ordi_mdsjacc, type="samples", color="specification",label="sample_id")+
   geom_point(size=2)+
@@ -659,8 +642,7 @@ print(hala5_ecm@sam_data)
 # nb genus
 colnames(hala5_ecm@tax_table)
 as.factor(hala5_ecm@tax_table[,5]) %>% droplevels() %>% levels()
-genus_nb_hala5 <- as.factor(hala5_ecm@tax_table[,5]) %>% droplevels() %>% levels() %>% length() 
-genus_nb_hala5 # 18 genus
+genus_nb_hala5 <- as.factor(hala5_ecm@tax_table[,5]) %>% droplevels() %>% levels() %>% length() %>% print() # 18 genus
 ```
 ## 4.2.1 bivariate analysis
 ```{r rarecurve}
