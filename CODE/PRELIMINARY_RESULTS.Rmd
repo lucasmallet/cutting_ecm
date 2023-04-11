@@ -30,6 +30,11 @@ BREUSCH PAGAN TEST:
 
 
 # *REMAINS TO DO* 
+- deciding about effect of variables (model -> stream + orientation + pool)
+- find a way to compute samples together if no significance (knowing that if we pool samplings UP-LO N-S together, we need to do it for all of them for comparison)
+- sampling design
+
+
 - rarefactions pb 
 - venn pb (all common, nothing specific)
 - hill (or similar)
