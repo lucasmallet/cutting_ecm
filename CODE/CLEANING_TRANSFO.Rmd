@@ -3,9 +3,9 @@ title: "Prelim_results"
 output: html_document
 date: "2023-03-06"
 ---
-*NOTES*
-TOASK : ctrl + F this and search 
-*LIBRARY*
+
+*NOTES* TOASK : ctrl + F this and search - new variable : upper - lower - resolve otu pb - *LIBRARY*
+
 ```{r packages}
 library(ggplot2) # Create Elegant Data Visualisations Using the Grammar of Graphics
 library(dplyr) # A Grammar of Data Manipulation
@@ -21,9 +21,12 @@ library (microbiomeutilities) # for rarefaction curves
 library("multcompView") # Visualizations of Paired Comparisons
 library(plyr)
 library(pals)
+library(ade4)
+library(lme4)
+library(lmtest)
 ```
 ```{r color palette}
-pal.bands(alphabet, alphabet2, cols25, glasbey, kelly, polychrome, 
+pals::pal.bands(alphabet, alphabet2, cols25, glasbey, kelly, polychrome, 
   stepped, tol, watlington,
   show.names=FALSE)
 
@@ -37,13 +40,17 @@ outersect <- function(x, y) {
   sort(c(setdiff(x, y),
          setdiff(y, x)))
 } # extract uncommon values between x - y 
+
+stde <- function (x) {sqrt(var(x))/length(x)}
 ```
 ```{r dummy calc}
 # hellinger : sum of reads per sample = 1 ? (as same as relative abundance ?)
 
 #abund1 <- c(sample(0:250, n = 10))
 ```
-*DATA IMPORTATION AND MODIF* 
+
+*DATA IMPORTATION AND MODIF*
+
 ```{r raw_data}
 setwd("H:/REDACTION/RESULTS/cutting_ecm/TRANSF_DATA2") 
 #data run
@@ -66,6 +73,7 @@ raw_clust[,"order"] <- as.numeric(raw_clust[,"order"])
 raw_f_clust <- subset(raw_clust,!grepl("PLANT|NF",raw_clust[,5]))
 raw_nf_clust <- subset(raw_clust,grepl("PLANT|NF",raw_clust[,5]))
 ```
+
 ```{r tax-eco table }
 # only the 1st 1000 clusters 
 taxeco_id <- read.table("tax_table.txt",header=T,sep="\t") # change #N/A in excel in NA
@@ -80,6 +88,7 @@ taxeco2 <- matrix(as.character(unlist(taxeco2)),
               ncol = ncol(taxeco2),
               nrow = nrow(taxeco2))
 ```
+
 ```{r subsetting taxtable}
 id_taxeco <- raw_f_clust %>%
   filter(Cluster_ID %in% taxeco_id$Cluster_ID) %>%
@@ -129,6 +138,7 @@ taxeco <- taxeco1[, c(17:24,1)]
 taxeco <- sapply(taxeco, as.character) 
 rownames(taxeco) <- rownames(taxeco1) # cluster name in row
 ```
+
 ```{r sample data}
 # sample data
 sam <- read.table("sample_table.txt",header=T,sep="\t",na.strings = T) 
@@ -143,6 +153,7 @@ sam_hala5 <- subset(sam, sam$site == "Halasen_p_5") # 29 samples
 sam_fanga <- subset(sam, sam$site == "Fangamon") # 69 samples
 sam_controls_na <- filter(sam, !site %in% c("Halasen","Halasen_p_5","Fangamon")) # 19 samples (or controls)
 ```
+
 ```{r otu table}
 otu_all <- read.table("otu_table.txt",header=F,sep="\t",na.strings = T) 
 otu_all = setNames(data.frame(t(otu_all[,-1])), otu_all[,1]) # transpose + 1st column (ie samples set as header
@@ -157,12 +168,13 @@ cluster_names_otu_all <- rownames(otu_all)
 # removing clusters with 0 rowsums 
 ## relics of PCR mismatch tag (still amplified)
 ## but clusters still there after the exclusion of mismatch tags (eg ITS7-49 x ITS4-48)
-
 otu_all <- sapply(otu_all, as.numeric) %>% as.data.frame()
 rownames(otu_all) <- cluster_names_otu_all
-which(rowSums(otu_all) == 0)
+which(rowSums(otu_all) == 0) %>% length() # clust with 0 reads = 557 (4050 - 557 = 3493)
 otu <- otu_all %>%
-  filter(!rowSums(otu_all) ==0)
+  filter(!rowSums(otu_all) ==0) # suppression of these 557 clusters from otu matrix
+nrow(otu)
+ncol(otu)
 
 # controls and samples with 0 exclusion 
 not_samples_kept <- c("sITS-standard2", "sITS-standard1", "sPCR_neg_1", "sPCR_neg_2", "sQ2", "s49", "s97") # cf MM_RESULTS.Rmd ```{r DESIGN SAMPLES}  to understand how they are found 
@@ -170,36 +182,47 @@ not_samples_kept <- c("sITS-standard2", "sITS-standard1", "sPCR_neg_1", "sPCR_ne
 samples_kept_pq <- otu[, colnames(otu) %in% not_samples_kept] 
 clusters_in_controls <- which(samples_kept_pq >0, arr.ind = T) %>% 
   rownames() %>% as.factor() %>% levels() %>% print() # 13 clusters found in controls samples
-otu_samples_out <- otu[, !(colnames(otu) %in% not_samples_kept)] # suppressing from dataset 
+otu_samples_out <- otu[, !(colnames(otu) %in% not_samples_kept)] # suppressing these samples from otu matrix
+ncol(otu_samples_out)
 
 # excluding NF clusters to rarefy only with fungi
-otu <- otu_samples_out %>%
-  filter(rownames(otu_samples_out) %in% rownames(taxeco))
+otu_fungi <- otu_samples_out %>%
+  filter(rownames(otu_samples_out) %in% rownames(taxeco)) # taxeco has only fungi clusters
+nrow(otu_fungi) # 3493 - 3411 = 82 clusters suppressed
 
 # transfo into matrix
-otu1 <- matrix(as.numeric(unlist(otu)),
-              ncol = ncol(otu),
-              nrow = nrow(otu)) # puting array numeric and transforming in matrix for further functions 
+otu1 <- matrix(as.numeric(unlist(otu_fungi)),
+              ncol = ncol(otu_fungi),
+              nrow = nrow(otu_fungi)) # puting array numeric and transforming in matrix for further functions 
 
 # re-attribution (after being deleted from matrix transfo)
-rownames(otu1) <- rownames(otu)
-colnames(otu1) <- colnames(otu)
+rownames(otu1) <- rownames(otu_fungi)
+colnames(otu1) <- colnames(otu_fungi)
 ```
+
 ```{r otu <1% suppresion}
 otu_relative <- prop.table(otu1, margin=2) # margin = 2 -> column sum and relative abundances
 verif_sum <- colSums(otu_relative) %>% summary() %>% print() # # verification: ok if 1 and some NAs
-otu_001 <- ifelse(otu_relative>0.01,otu1,0) # creating a new matrix where <1% reads are deleted
+otu_001_transf <- ifelse(otu_relative>0.01,otu1,0) # creating a new matrix where <1% reads are transformed into 0
+otu_001 <- subset(otu_001_transf, !rowSums(otu_001_transf)==0)
+
+nrow(otu_001_transf)
+nrow(otu_001)
+nrow(otu_001_transf) - nrow(otu_001) # 2822 clusters with relative abundance < 1% = suppressed -> 589 conserved 
+
 otu_notrarefied <- otu_001
 ```
+
 ```{r hellinger transformation}
 otu_hellinger <- sapply(otu_relative, sqrt)
 otu_hellinger <- matrix(as.numeric(unlist(otu_hellinger)),
-              ncol = ncol(otu_001),
-              nrow = nrow(otu_001))
-rownames(otu_hellinger) <- rownames(otu_001)
-colnames(otu_hellinger) <- colnames(otu_001)
+              ncol = ncol(otu_001_transf),
+              nrow = nrow(otu_001_transf))
+rownames(otu_hellinger) <- rownames(otu_001_transf)
+colnames(otu_hellinger) <- colnames(otu_001_transf)
 verif_sum_hell <- colSums(otu_hellinger) %>% summary() %>% print() # # verification: ok if 1 and some NAs
 ```
+
 ```{r otu rarefaction}
 otu_t0 <- t(otu_001)
 otu_t <- matrix(as.numeric(unlist(otu_t0)),
@@ -214,10 +237,12 @@ otu_rarefied <- matrix(as.numeric(unlist(otu_rarefied)),
               ncol = ncol(otu_rarefied),
               nrow = nrow(otu_rarefied))
 
-rownames(otu_rarefied) <- rownames(otu)
-colnames(otu_rarefied) <- colnames(otu)
+rownames(otu_rarefied) <- rownames(otu_001)
+colnames(otu_rarefied) <- colnames(otu_001)
 ```
+
 *CREATION OF PHYSEQ OBJECTS*
+
 ```{r physeq objects}
 # creating the physeq objects 
 otu_phy_rarefied <- otu_table(otu_rarefied, taxa_are_rows = TRUE)
@@ -245,15 +270,16 @@ clusters_in_controls # controls to understand
 sample_names(physeq)
 length(sample_names(physeq)) # 154 samples, as expected 
 ```
+
 ```{r sequencing depth changing between pool ?}
 richness_allc_raref <- specnumber(t(otu_rarefied)) # richness calc (same as nonrarefied ofc) 
 summary(richness_allc_raref) # richness of samples from ALL Fungi clusters
-hist(richness_allc_raref)
+# hist(richness_allc_raref) # PLOT 
 
 reads_sum_per_sample <- data.frame(rownames(otu_t), rowSums(otu_t)) # after deleting <1% relative abundance
 summary(reads_sum_per_sample) # sum of reads per sample for ALL Fungi clusters 
 shapiro.test(reads_sum_per_sample$rowSums.otu_t.) # normal distribution
-hist(reads_sum_per_sample$rowSums.otu_t.) # rarefying based on the min sample depth (here 419)
+#hist(reads_sum_per_sample$rowSums.otu_t.) # PLOT # rarefying based on the min sample depth (here 419)
 low_seqdepth_samples <- which(reads_sum_per_sample < 300, arr.ind = T) %>% data.frame() %>% print() # samples with sequencing depth under a threshold
 list_low_seqdepth_samples <- dput(as.character(rownames(low_seqdepth_samples))) # convert into the format c(x; y; ...; z)
 # TOASK -> should we delete these samples ? 
@@ -266,7 +292,7 @@ physeq_notrarefied_p2 <- subset_samples(physeq_001kept, physeq_001kept@sam_data$
 
 r_sps <- rowSums(t(physeq_001kept@otu_table)) # r_sps = sum per sample
 summary(r_sps)
-hist(r_sps)
+#hist(r_sps) #PLOT
 
 rp1_sps <- rowSums(t(physeq_notrarefied_p1@otu_table))
 summary(rp1_sps)
@@ -292,27 +318,49 @@ boxplot(r_sps ~ physeq_001kept@sam_data$pool)
 boxplot(r_sps ~ physeq_001kept@sam_data$site)
 
 # statistical test
-lm_seq_depth <- lm(reads_sum_per_sample ~ physeq_001kept@sam_data$pool + physeq_001kept@sam_data$site)
+lm_seq_depth <- lm(r_sps ~ physeq_001kept@sam_data$pool + physeq_001kept@sam_data$site)
 anova(lm_seq_depth) 
 kruskal.test(r_sps, physeq_001kept@sam_data$pool) # if test conditions arent fulfilled 
 # TOASK seems to be significant difference in seq depth for the pools
 ```
+
 ```{r taxa attribution mistakes}
 # reattribution of correct names
 physeq@tax_table[physeq@tax_table == "Gautieria_"] <- "Gautieria"
 physeq@tax_table[physeq@tax_table == "Piloderma__"] <- "Piloderma"
 physeq@tax_table[physeq@tax_table == "Sebacina__"] <- "Sebacina"
 physeq@tax_table[physeq@tax_table == "Inocybe_geophylla"] <- "Inocybe_geophylla_(coll.)"
+
+# changing variable levels
+levels(as.factor(physeq@tax_table[,7])) # primary lifestyle levels
+
+physeq@tax_table[,7] <- plyr::revalue(physeq@tax_table[,7],
+                                      c("algal_parasite" = "other_lifestyle",
+                                        "animal_endosymbiont" = "other_lifestyle",
+                                        "animal_parasite" = "other_lifestyle",
+                                        "dung_saprotroph" = "saprotroph",
+                                        "ectomycorrhizal" = "ectomycorrhizal",
+                                        "lichen_parasite" = "other_lifestyle",
+                                        "lichenized" = "other_lifestyle",
+                                        "litter_saprotroph" = "saprotroph",
+                                        "mycoparasite" = "other_lifestyle",
+                                        "plant_pathogen" = "other_lifestyle",
+                                        "root_endophyte" = "other_lifestyle",
+                                        "soil_saprotroph" = "saprotroph",
+                                        "sooty_mold" = "other_lifestyle",
+                                        "unspecified_saprotroph" = "saprotroph",
+                                        "wood_saprotroph" = "saprotroph"))
 ```
+
 ```{r susbsets primary}
 # subsetting based on sites and guilds 
 # CTRL F + remove_empty_samples = T <-> remove_empty_samples = F
 
-ecm_phy <- subset_taxa(physeq, primary_lifestyle=="ectomycorrhizal") 
-ecm_phy <- subset_samples(ecm_phy, (ecm_phy@sam_data$site!="control")) %>% 
-clean_pq(remove_empty_samples = TRUE,remove_empty_taxa = T, clean_samples_names = F)
-sapr_phy <- subset_taxa(physeq, primary_lifestyle!="ectomycorrhizal") %>% 
+ecm_phy <- subset_taxa(physeq, primary_lifestyle == "ectomycorrhizal") %>% 
 clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = F)
+sapr_phy <- subset_taxa(physeq, primary_lifestyle == "saprotroph") %>% 
+clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = F)
+other_phy <- subset_taxa(physeq, (primary_lifestyle == "other_lifestyle" | is.na(primary_lifestyle)))  %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = F)
 
 fanga <- subset_samples(physeq, physeq@sam_data$site=="Fangamon") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
 hala <- subset_samples(physeq, physeq@sam_data$site=="Halasen") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
@@ -324,31 +372,50 @@ hala5_ecm <- subset_samples(ecm_phy, ecm_phy@sam_data$site=="Halasen_p_5") %>% c
 ```
 ```{r transforming factor labels}
 # hala
+hala_ecm@sam_data
+## transforming specification into treatment factor
 print(hala_ecm@sam_data)
 factor(hala_ecm@sam_data$specification) %>% levels()
-
-hala_ecm@sam_data$specification <- plyr::revalue(hala_ecm@sam_data$specification,
+hala_ecm@sam_data$treatment_edge <- plyr::revalue(hala_ecm@sam_data$specification,
                            c("edge_north"="edge", 
                              "edge_south"="edge",
                              "kant_norra"="edge", 
                              "middle_lower"="middle", 
                              "middle_upper"="middle",
                              "midle"="middle"))
-as.factor(hala_ecm@sam_data$specification) %>% droplevels() %>% levels()
+as.factor(hala_ecm@sam_data$treatment_edge) %>% droplevels() %>% levels()
 
-hala_ecm@sam_data <- within(hala_ecm@sam_data, specification[specification=="middle" & treatment=="forest"] <- "FOR_middle") 
+hala_ecm@sam_data$specification_value <- plyr::revalue(hala_ecm@sam_data$specification,
+                           c("edge_north"="N", 
+                             "edge_south"="S",
+                             "kant_norra"="N", 
+                             "middle_lower"="LO", 
+                             "middle_upper"="UP",
+                             "midle"= NA,
+                             "middle"= NA))
 
-hala_ecm@sam_data$specification <- plyr::revalue(hala_ecm@sam_data$specification,
-                           c("middle"="CC_middle", 
-                             "edge"="CC_edge"))
-as.factor(hala_ecm@sam_data$specification) %>% droplevels() %>% levels()
+hala_ecm@sam_data <- within(hala_ecm@sam_data, treatment_edge[treatment_edge=="middle" & treatment=="forest"] <- "FOR") 
+
+hala_ecm@sam_data$treatment_edge <- plyr::revalue(hala_ecm@sam_data$treatment_edge,
+                           c("middle"="CC_MID", 
+                             "edge"="CC_EDG"))
+as.factor(hala_ecm@sam_data$treatment_edge) %>% droplevels() %>% levels()
+
+# variables stream (upper or lower) and orientation (north or south)
+
+hala_ecm@sam_data$stream <- NA
+hala_ecm@sam_data$stream[which(hala_ecm@sam_data$specification_value == "UP")] <- "UP"
+hala_ecm@sam_data$stream[which(hala_ecm@sam_data$specification_value == "LO")] <- "LO"
+
+hala_ecm@sam_data$orient <- NA
+hala_ecm@sam_data$orient[which(hala_ecm@sam_data$specification_value == "N")] <- "N"
+hala_ecm@sam_data$orient[which(hala_ecm@sam_data$specification_value == "S")] <- "S"
 
 # hala5
 hala5_ecm@sam_data$treatment <- plyr::revalue(hala5_ecm@sam_data$treatment,
                            c("control" = "forest",
                              "p_5" = "thinned"))
 as.factor(hala5_ecm@sam_data$treatment) %>% droplevels() %>% levels()
-
 # fanga
 fanga_ecm@sam_data$treatment <- plyr::revalue(fanga_ecm@sam_data$treatment,
                            c("forest_control" = "forest",
@@ -356,6 +423,7 @@ fanga_ecm@sam_data$treatment <- plyr::revalue(fanga_ecm@sam_data$treatment,
                              "shelter_without_burn" = "thinned_no_burn"))
 as.factor(fanga_ecm@sam_data$treatment) %>% droplevels() %>% levels()
 ```
+
 ```{r subsets secondary}
 fanga_ecm_12 <- subset_samples(fanga_ecm, fanga_ecm@sam_data$year=="2012") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
 hala_ecm_12 <- subset_samples(hala_ecm, hala_ecm@sam_data$year=="2012") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
@@ -366,8 +434,15 @@ hala_ecm_18 <- subset_samples(hala_ecm, hala_ecm@sam_data$year=="2018") %>% clea
 fanga_sapr <- subset_samples(sapr_phy, sapr_phy@sam_data$site=="Fangamon") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
 hala_sapr <- subset_samples(sapr_phy, sapr_phy@sam_data$site=="Halasen") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
 hala5_sapr <- subset_samples(sapr_phy, sapr_phy@sam_data$site=="Halasen_p_5") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
+
+# hala specification (for stat tests)
+hala_orient <- subset_samples(hala_ecm, hala_ecm@sam_data$specification_value %in% c("N", "S")) %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
+
+hala_stream <- subset_samples(hala_ecm, hala_ecm@sam_data$specification_value %in% c("UP", "LO")) %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
 ```
+
 *VAR TRANSFO FOR ANALYSIS*
+
 ```{r transfo variables}
 fanga_sam <- lapply(fanga@sam_data, as.factor) %>% as.data.frame()
 hala_sam <- lapply(hala@sam_data, as.factor) %>% as.data.frame()
@@ -375,24 +450,8 @@ hala5_sam <- lapply(hala5@sam_data, as.factor) %>% as.data.frame()
 
 sample_data(fanga_ecm)$year_factor <- as.factor(sample_data(fanga_ecm)$year)
 sample_data(hala_ecm)$year_factor <- as.factor(sample_data(hala_ecm)$year)
-
-hala5_ecm@sam_data$treatment <- plyr::revalue(hala5_ecm@sam_data$treatment,
-                           c("control" = "forest",
-                             "p_5" = "thinned"))
-as.factor(hala5_ecm@sam_data$treatment) %>% droplevels() %>% levels()
-
-fanga_ecm_12@sam_data$treatment <- plyr::revalue(fanga_ecm_12@sam_data$treatment,
-                           c("forest_control" = "forest",
-                             "shelter_burn" = "thinned_burn",
-                             "shelter_without_burn" = "thinned_no_burn"))
-as.factor(fanga_ecm_12@sam_data$treatment) %>% droplevels() %>% levels()
-
-fanga_ecm_18@sam_data$treatment <- plyr::revalue(fanga_ecm_18@sam_data$treatment,
-                           c("forest_control" = "forest",
-                             "shelter_burn" = "thinned_burn",
-                             "shelter_without_burn" = "thinned_no_burn"))
-as.factor(fanga_ecm_18@sam_data$treatment) %>% droplevels() %>% levels()
 ```
+
 ```{r transposing otu table in physq object for hill_pq}
 hala_ecm_otu_t <- t(hala_ecm@otu_table)
 hala_ecm_sam <- hala_ecm@sam_data
@@ -409,10 +468,18 @@ fanga_ecm_sam <- fanga_ecm@sam_data
 fanga_ecm_tax <- fanga_ecm@tax_table
 fanga_ecm_t <- phyloseq(fanga_ecm_otu_t,fanga_ecm_sam,fanga_ecm_tax)
 ```
+
 ```{r grouping by factor of insterest}
-hala_grp_12 <- merge_group(hala_ecm_12, group = "specification",)
-hala_grp_18 <- merge_group(hala_ecm_18, group = "specification",)
+hala_grp_12 <- merge_group(hala_ecm_12, group = "treatment_edge",)
+hala_grp_18 <- merge_group(hala_ecm_18, group = "treatment_edge",)
 hala5_grp <- merge_group(hala5_ecm, group = "treatment")
 fanga_grp_12 <- merge_group(fanga_ecm_12, group = "treatment")
 fanga_grp_18 <- merge_group(fanga_ecm_18, group = "treatment")
 ```
+
+
+
+
+
+
+

@@ -16,6 +16,19 @@ shift+alt+o = open all
 dput(as.character(samples_missing_postscata)) # convert into the format c(x; y; ...; z)
 
 for ggplot: position = fill -> relative abundance 
+
+DURBIN WATSON TEST:
+# The Durbin Watson statistic is a test for autocorrelation in a regression model's output.
+#The DW statistic ranges from zero to four, with a value of 2.0 indicating zero autocorrelation. 
+#Values below 2.0 mean there is positive autocorrelation and above 2.0 indicates negative autocorrelation
+# A rule of thumb is that DW test statistic values in the range of 1.5 to 2.5 are relatively normal
+# significantly small p-value casts doubt on the validity of the null hypothesis and indicates autocorrelation among residuals.
+
+BREUSCH PAGAN TEST:
+# Null Hypothesis (H0): Homoscedasticity is present (the residuals are distributed with equal variance)
+# Alternative Hypothesis (HA): Heteroscedasticity is present (the residuals are not distributed with equal variance)
+
+
 # *REMAINS TO DO* 
 - rarefactions pb 
 - venn pb (all common, nothing specific)
@@ -126,11 +139,15 @@ pourc_ecm <- nrow(ecm_phy@tax_table)/1000*100; pourc_ecm # 20% ECM guild among F
 
 ## nb reads
 run_data[3,2]
-raw_total_read <- sum(raw_f_clust$Cluster_Size); raw_total_read ## TODO: exlcude plants to have proper pourcentages values
-ecm_total_read <-sum(ecm_raw$Cluster_Size); ecm_total_read
-pourc_nb_read_ecm <- ecm_total_read/raw_total_read*100; pourc_nb_read_ecm # pourc nb read conserved/ nb read 
+raw_plantfungi_read <- sum(raw_clust$Cluster_Size) 
+raw_total_read <- sum(raw_f_clust$Cluster_Size)
+ecm_total_read <-sum(ecm_raw$Cluster_Size) 
+
+pourc_nb_read_fungi <- (raw_total_read/raw_plantfungi_read)*100; pourc_nb_read_fungi
+pourc_nb_read_ecm <- ecm_total_read/raw_total_read*100 %>% print() # pourc nb read conserved/ nb read 
 summary(ecm_raw$Cluster_Size) # min, mean, max of ecm reads
 ```
+
 ## OVERVIEW_DATA
 ```{r general}
 summary(run_data)
@@ -247,7 +264,7 @@ length(miss_sam_clust_ctrl$sample_id)
 length(row.names(sam_controls_na)) # every control and NA are suppressed from the dataset (because 0 occurence of clusters)
 
 # hala
-miss_sam_clust_hala <- anti_join(x = sam_hala[,1:7], y = hala_ecm@sam_data[,1:7]) # exclude specification column because we changed factor values for this column
+miss_sam_clust_hala <- anti_join(x = sam_hala[,1:7], y = hala_ecm@sam_data[,1:7]) # exclude treatment_edge column because we changed factor values for this column
 miss_sam_clust_hala$sample_id
 
 # hala5
@@ -411,6 +428,50 @@ all_mdsbray_rarefied <- plot_ordination(physeq, all_mdsbray_rarefied, type="samp
   ggtitle(label = "MDS of samples from Halasen_edge by year", subtitle="presence-absence (brayard distance)")
 all_mdsbray_rarefied
 ```
+```{r check losing clusters - samples after clean_pq}
+# nb of clusters in subsets
+nrow(otu_all)             # 4050 
+nrow(otu1)                # 3411
+nrow(physeq@otu_table)    # 588
+nrow(ecm_phy@otu_table)   # 149
+nrow(sapr_phy@otu_table)  # 172 
+nrow(fanga_ecm@otu_table) # 37
+nrow(hala_ecm@otu_table)  # 100
+nrow(hala5_ecm@otu_table) # 49
+
+# representation of the total nb of reads
+sum(otu_all) # total all reads
+sum(otu_samples_out) # total reads with controls out 
+sum(otu_fungi) # total reads only fungi
+
+sum(otu_fungi)/sum(otu_all)*100 # 75% fungi in all reads 
+
+sum(otu1)-sum(otu_001) # losing clusters with <1% relative abundance = 81668 reads
+sum(otu_001) # without <1% clusters 
+
+sum(physeq_notrarefied@otu_table)
+sum(physeq_notrarefied@otu_table)-sum(physeq@otu_table) # loosing 115 997 reads with rarefaction
+sum(physeq@otu_table) # 40 502 reads after rarefaction in all sites 
+
+sum(ecm_phy@otu_table) # 8 379 ecm reads
+sum(sapr_phy@otu_table)# 18 615 saprotroph reads
+sum(other_phy@otu_table)# 13508 reads from "other" (other guilds and not attributed, could be saprobes) 
+
+# per guild - all sites
+pourc_ecm <- sum(ecm_phy@otu_table)/sum(physeq@otu_table)*100; pourc_ecm # 21% ecm 
+pourc_sapr <- sum(sapr_phy@otu_table)/sum(physeq@otu_table)*100; pourc_sapr # 46 % sapro
+pourc_other <- sum(other_phy@otu_table)/sum(physeq@otu_table)*100; pourc_other # 33 % unknown (potential sapro?)
+pourc_other + pourc_sapr + pourc_ecm
+
+# per site (rarefied)
+sum(hala_ecm@otu_table)
+sum(hala5_ecm@otu_table)
+sum(fanga_ecm@otu_table)
+
+pourc_hala_ecm <- sum(hala_ecm@otu_table)/sum(hala@otu_table)*100; pourc_hala_ecm # 29.2% ecm hala
+pourc_hala5_ecm <- sum(hala5_ecm@otu_table)/sum(hala5@otu_table)*100; pourc_hala5_ecm # 23.1 % ecm hala5  
+pourc_fanga_ecm <- sum(fanga_ecm@otu_table)/sum(fanga@otu_table)*100; pourc_fanga_ecm # 12.6% fanga
+```
 
 # *2 OVERVIEW DATA FROM SITES*
 ```{r between sites}
@@ -444,12 +505,29 @@ ecm_phy_rrcurve <- phyloseq.extended::ggrare(physeq = ecm_phy,
 ecm_phy_rrcurve
 ```
 # *3 HALASEN STUDY: edge retention trees*
-## 3.1 design and sampling
+## 3.0 design and sampling
 ```{r overview }
 # sampling design
 colnames(hala_sam)
 summary(hala_sam[,c(2,5:8)])
-table(hala_sam$plot,hala_sam$treatment)
+table(hala_ecm@sam_data$plot, hala_ecm@sam_data$treatment)
+table(sam_hala$plot, sam_hala$treatment)
+
+# lacking :
+## after clustering:
+### 2 (n=1); 9 (n=2) -> N=3 missing in initial sample_data matrix (64 samples in design)
+length(sam_hala$sample_id)
+
+## after clean_pq (empty samples):
+### 2 (n=1); 9 (n=2); 3 (n=3); 8 (n=1) -> N= 7 
+length(hala_ecm@sam_data$sample_id) # N= 7 missing after bioinformatic analysis 
+# result: 3 (n=3); 8 (n=1) 
+
+table(hala_ecm_12@sam_data$plot, hala_ecm_12@sam_data$treatment)
+table(hala_ecm_18@sam_data$plot, hala_ecm_18@sam_data$treatment)
+
+summary(hala_ecm@sam_data$treatment_edge)
+summary(as.factor(hala@sam_data$treatment_edge))
 
 # nb genus
 colnames(hala_ecm@tax_table)
@@ -463,53 +541,105 @@ ggvenn_pq(hala_ecm, fact="year", taxonomic_rank = "Genus")
 
 - change between 2012 2018 (see below) -> could be explained by a difference in the biomolecular methods ? we should not expect any difference in forest control treatment between years
 
+## 3.1 stat test
+```{r EDGE - NORTH & UPPER LOWER }
+# creating diversity variables
+div_hala <- vegan::diversity(x = t(hala_ecm@otu_table),
+                             index = "shannon")
+rich_hala <- vegan::specnumber(x= t(hala_ecm@otu_table))
+summary(rich_hala)
+summary(div_hala)
+
+df_div_hala <- data.frame(hala_ecm@sam_data, div_hala, rich_hala)
+
+stde_hala <- tapply(df_div_hala$div_hala, df_div_hala$treatment_edge, stde) # if needed for tables
+median_hala <- tapply(df_div_hala$div_hala,df_div_hala$treatment_edge, median)
+min_hala <- tapply(df_div_hala$div_hala,df_div_hala$treatment_edge, min)
+max_hala <- tapply(df_div_hala$div_hala,df_div_hala$treatment_edge, max)
+
+boxplot(div_hala ~ hala_ecm@sam_data$treatment_edge)
+boxplot(rich_hala ~ hala_ecm@sam_data$treatment_edge)
+
+# model all
+str(df_div_hala)
+lm_div <- lm(rich_hala ~ specification_value, data = df_div_hala) 
+par(mfrow=c(2,2))
+plot(lm_div)
+par(mfrow=c(1,1))
+hist(lm_div$res)
+shapiro.test(lm_div$res) # OK
+dwtest(lm_div)  # OK
+bptest(lm_div)  # OK
+Anova(lm_div, type="II")
+anova(lm_div)
+TukeyHSD(aov(lm_div), "specification_value")
+
+boxplot(rich_hala ~ hala_ecm@sam_data$specification_value)
+
+# model all addition ## TO RESOLVE AND CHOOSE
+str(df_div_hala)
+lm_div <- lm(rich_hala ~ orient + stream, data = df_div_hala) 
+par(mfrow=c(2,2))
+plot(lm_div)
+par(mfrow=c(1,1))
+hist(lm_div$res)
+shapiro.test(lm_div$res) # OK
+dwtest(lm_div)  # OK
+bptest(lm_div)  # OK
+Anova(lm_div, type="II")
+anova(lm_div)
+TukeyHSD(aov(lm_div), "specification_value")
+
+boxplot(rich_hala ~ hala_ecm@sam_data$specification_value)
+```
+
 ## 3.2.1 alpha
 ```{r rarecurve}
-hala_rrcurve_groups1 <- phyloseq.extended::ggrare(hala_grp_12, step = 10, color = "specification",plot=F, se=T)+ 
+hala_rrcurve_groups1 <- phyloseq.extended::ggrare(hala_grp_12, step = 10, color = "treatment_edge",plot=F, se=T)+ 
   facet_wrap(~year)+
   labs(x = "Group size",
        y =  "OTU richness",
        title = "rarefaction curves by treatment",
        color = "Treatment")+
   guides(fill = F)+ # Suppressing the filling (standard error) legend 
-  scale_color_manual(values = c("CC_edge" = "orange",
-                                "CC_middle" = "red",
-                                "FOR_middle" = "darkgreen"))+
-  scale_fill_manual(values = c("CC_edge" = "orange",
-                                "CC_middle" = "red",
-                                "FOR_middle" = "darkgreen"))
+  scale_color_manual(values = c("CC_EDG" = "orange",
+                                "CC_MID" = "red",
+                                "FOR" = "darkgreen"))+
+  scale_fill_manual(values = c("CC_EDG" = "orange",
+                                "CC_MID" = "red",
+                                "FOR" = "darkgreen"))
 hala_rrcurve_groups1
 
-hala_rrcurve_groups2 <- phyloseq.extended::ggrare(hala_grp_18, step = 10, color = "specification",plot=F, se=T)+ 
+hala_rrcurve_groups2 <- phyloseq.extended::ggrare(hala_grp_18, step = 10, color = "treatment_edge",plot=F, se=T)+ 
   facet_wrap(~year)+
   labs(x = "Group size",
        y =  "OTU richness",
        title = "rarefaction curves by treatment",
        color = "Treatment")+
   guides(fill = F)+ # Suppressing the filling (standard error) legend 
-  scale_color_manual(values = c("CC_edge" = "orange",
-                                "CC_middle" = "red",
-                                "FOR_middle" = "darkgreen"))+
-  scale_fill_manual(values = c("CC_edge" = "orange",
-                                "CC_middle" = "red",
-                                "FOR_middle" = "darkgreen"))
+  scale_color_manual(values = c("CC_EDG" = "orange",
+                                "CC_MID" = "red",
+                                "FOR" = "darkgreen"))+
+  scale_fill_manual(values = c("CC_EDG" = "orange",
+                                "CC_MID" = "red",
+                                "FOR" = "darkgreen"))
 hala_rrcurve_groups2
 ```
 ```{r circle graph: genus distribution among treatments}
 circle_pq(physeq = hala_ecm, 
-                              fact = "specification", 
+                              fact = "treatment_edge", 
                               taxa = "Genus", 
                               min_prop_mod=0.001,
                               min_prop_tax=0.01,
-                              row_col = c("CC_middle" = "red",
-                                          "CC_edge" = "orange",
-                                          "FOR_middle" = "darkgreen"),
+                              row_col = c("CC_MID" = "red",
+                                          "CC_EDG" = "orange",
+                                          "FOR" = "darkgreen"),
                               grid_col= 1,
                               add_nb_seq = T)
 ```
 ```{r hill otu}
 hala_hill_treatment <- hill_pq(physeq = hala_ecm_t, 
-                               variable = "specification",
+                               variable = "treatment_edge",
                                color_fac = NA, 
                                letters = F)
   
@@ -519,9 +649,9 @@ hala_hill0 <- hala_hill_treatment[[1]]+
   coord_cartesian(xlim=c(0,16))+
   scale_x_continuous(name="Hill_0", breaks=seq(0,16,by=2))+
   scale_y_continuous(name="Position from CC", breaks=c(1,2,3))+
-  scale_color_manual(values = c("CC_edge" = "orange",
-                                "CC_middle" = "red",
-                                "FOR_middle" = "darkgreen"))+
+  scale_color_manual(values = c("CC_EDG" = "orange",
+                                "CC_MID" = "red",
+                                "FOR" = "darkgreen"))+
   theme(axis.text.x=element_text(color="coral4", size=8, angle=0))
 hala_hill0
 
@@ -530,9 +660,9 @@ hala_hill1 <- hala_hill_treatment[[2]]+
   coord_cartesian(xlim=c(0,12))+
   scale_x_continuous(name="Hill_1", breaks=seq(0,12,by=2))+
   scale_y_continuous(name="Position from CC", breaks=c(1,2,3))+
-  scale_color_manual(values = c("CC_edge" = "orange",
-                                "CC_middle" = "red",
-                                "FOR_middle" = "darkgreen"))+
+  scale_color_manual(values = c("CC_EDG" = "orange",
+                                "CC_MID" = "red",
+                                "FOR" = "darkgreen"))+
   theme(axis.text.x=element_text(color="coral4", size=8, angle=0))
 hala_hill1
 
@@ -541,9 +671,9 @@ hala_hill2 <- hala_hill_treatment[[3]]+
   coord_cartesian(xlim=c(0,10))+
   scale_x_continuous(name="Hill_2", breaks=seq(0,10,by=2))+
   scale_y_continuous(name="Position from CC", breaks=c(1,2,3))+
-  scale_color_manual(values = c("CC_edge" = "orange",
-                                "CC_middle" = "red",
-                                "FOR_middle" = "darkgreen"))+
+  scale_color_manual(values = c("CC_EDG" = "orange",
+                                "CC_MID" = "red",
+                                "FOR" = "darkgreen"))+
   theme(axis.text.x=element_text(color="coral4", size=8, angle=0))
 hala_hill2
 
@@ -553,8 +683,8 @@ hala_hill_treatment[[4]] # TukeyHSD test
 ```{r barplot genus distribution}
 genus_nb_hala <- as.factor(hala_ecm@tax_table[,5]) %>% droplevels() %>% levels() %>% length() %>% print()
 ## OTU Genus count (0;1) by treatment
-hala_ecm_ggplot1 <- phyloseq::plot_bar(as_binary_otu_table(hala_ecm), x = "specification") 
-hala_ecm_ggplot1 <- ggplot(hala_ecm_ggplot1$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=specification, y = Abundance))+
+hala_ecm_ggplot1 <- phyloseq::plot_bar(as_binary_otu_table(hala_ecm), x = "treatment_edge") 
+hala_ecm_ggplot1 <- ggplot(hala_ecm_ggplot1$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment_edge, y = Abundance))+
   geom_bar(stat="identity", position = "stack") +
   scale_fill_manual(values = funky(genus_nb_hala))+
   facet_grid(~year, scale="free")+
@@ -565,8 +695,8 @@ hala_ecm_ggplot1 <- ggplot(hala_ecm_ggplot1$data, aes(fill= fct_reorder(as.facto
 hala_ecm_ggplot1
 
 # OTU Genus abundance by treatment
-hala_ecm_ggplot2 <- phyloseq::plot_bar(hala_ecm, x = "specification") 
-hala_ecm_ggplot2 <- ggplot(hala_ecm_ggplot2$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=specification, y = Abundance))+
+hala_ecm_ggplot2 <- phyloseq::plot_bar(hala_ecm, x = "treatment_edge") 
+hala_ecm_ggplot2 <- ggplot(hala_ecm_ggplot2$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment_edge, y = Abundance))+
   geom_bar(stat="identity", position = "stack")+
   scale_fill_manual(values = funky(genus_nb_hala))+
   facet_grid(~year, scale="free")+
@@ -579,8 +709,8 @@ hala_ecm_ggplot2
 ```{r barplot OTUs distribution}
 otu_nb_hala <- as.factor(hala_ecm@tax_table[,6]) %>% droplevels() %>% levels() %>% length()
 ## OTU count (0;1) by treatment
-hala_ecm_ggplot3 <- phyloseq::plot_bar(as_binary_otu_table(hala_ecm), x = "specification") 
-hala_ecm_ggplot3 <- ggplot(hala_ecm_ggplot3$data, aes(fill= fct_reorder(as.factor(OTU_ID), Abundance), x=specification, y = Abundance))+
+hala_ecm_ggplot3 <- phyloseq::plot_bar(as_binary_otu_table(hala_ecm), x = "treatment_edge") 
+hala_ecm_ggplot3 <- ggplot(hala_ecm_ggplot3$data, aes(fill= fct_reorder(as.factor(OTU_ID), Abundance), x=treatment_edge, y = Abundance))+
   geom_bar(stat="identity", position = "stack") +
   scale_fill_manual(values = funky(otu_nb_hala))+
   facet_grid(~year, scale="free")+
@@ -590,16 +720,51 @@ hala_ecm_ggplot3 <- ggplot(hala_ecm_ggplot3$data, aes(fill= fct_reorder(as.facto
   theme(axis.text.x=element_text(color="coral4", size=8, angle=20))
 hala_ecm_ggplot3
 ```
+```{r boxplot}
+# OTU richness 
+
+hala_box1 <- phyggplot( aes(x=name, y=value, fill=name)) +
+    geom_boxplot() +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+    geom_jitter(color="black", size=0.4, alpha=0.9) +
+    theme_ipsum() +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    ggtitle("A boxplot with jitter") +
+    xlab("")
+
+phyloseq::psmelt(hala_ecm) %>%
+ggplot(data = ., aes(x = treatment_edge, y = Abundance)) +
+  geom_boxplot(outlier.shape  = NA) +
+  geom_jitter(aes(color = ), height = 0, width = 0.2) +
+  labs(x = "Treatment", y = "Abundance")+
+  facet_wrap(~ year)
+
+phyloseq::psmelt(fanga_ecm) %>%
+ggplot(data = ., aes(x = treatment, y = Abundance)) +
+  geom_boxplot(outlier.shape  = NA) +
+  geom_jitter(aes(color = ), height = 0, width = 0.2) +
+  labs(x = "Treatment", y = "Abundance")+
+  facet_wrap(~ year)
+
+# abundance
+
+hala_box2 <- boxplot_abundance(d= hala_ecm, x='treatment_edge', y='otu_table',
+   line='subject')
+```
+
 ## 3.2.2 multivariate analysis
 ```{r multivariate representation}
 hala_ecm_ordi_mdsjacc <- ordinate(as_binary_otu_table(hala_ecm), method = "MDS", dist="jaccard")
-hala_ecm_ordi_mdsjacc <- plot_ordination(hala_ecm, hala_ecm_ordi_mdsjacc, type="samples", color="specification",label="sample_id")+
+hala_ecm_ordi_mdsjacc <- plot_ordination(hala_ecm, hala_ecm_ordi_mdsjacc, type="samples", color="treatment_edge",label="sample_id")+
   geom_point(size=2)+
   facet_wrap(~year)+
   # color and elipse
-  scale_color_manual(values = c("CC_edge" = "orange",
-                              "CC_middle" = "red",
-                              "FOR_middle" = "darkgreen"))+
+  scale_color_manual(values = c("CC_EDG" = "orange",
+                              "CC_MID" = "red",
+                              "FOR" = "darkgreen"))+
   stat_ellipse(type="t", level=0.70)+
   # legend
   guides(color=guide_legend(title="position from CC"))+
@@ -607,13 +772,13 @@ hala_ecm_ordi_mdsjacc <- plot_ordination(hala_ecm, hala_ecm_ordi_mdsjacc, type="
 hala_ecm_ordi_mdsjacc
 
 hala_ecm_ordi_mdsbray <- ordinate(hala_ecm, method = "MDS", dist="bray")
-hala_ecm_ordi_mdsbray <- plot_ordination(hala_ecm, hala_ecm_ordi_mdsbray, type="samples", color="specification",label="sample_id")+
+hala_ecm_ordi_mdsbray <- plot_ordination(hala_ecm, hala_ecm_ordi_mdsbray, type="samples", color="treatment_edge",label="sample_id")+
   geom_point(size=2)+
   facet_wrap(~year)+
   # color and elipse
-  scale_color_manual(values = c("CC_edge" = "orange",
-                              "CC_middle" = "red",
-                              "FOR_middle" = "darkgreen"))+
+  scale_color_manual(values = c("CC_EDG" = "orange",
+                              "CC_MID" = "red",
+                              "FOR" = "darkgreen"))+
   stat_ellipse(type="t", level=0.70)+
   # legend
   guides(color=guide_legend(title="position from CC"))+
@@ -629,6 +794,24 @@ plot_ordination(hala_ecm, hala_ecm_ordi_phyl_mdsbray, type="taxa", color="Order"
   # legend
   guides(color=guide_legend(title="position from CC"))+
   ggtitle(label = "MDS of samples from Halasen_edge by year",subtitle = "abundance (bray-curtis distance)")
+
+########## 
+# for specification_values
+
+hala_ordi_specvalues_mdsjacc <- ordinate(as_binary_otu_table(hala_ecm), method = "MDS", dist="jaccard")
+hala_ecm_ordi_mdsjacc <- plot_ordination(hala_ecm, hala_ordi_specvalues_mdsjacc, type="samples", color="specification_value",label="sample_id")+
+  geom_point(size=2)+
+  facet_wrap(~year)+
+  # color and elipse
+  scale_color_manual(values = c("N" = "lightblue",
+                              "S" = "lightpink",
+                              "UP" = "darkblue",
+                              "LO" = "darkred"))+
+  stat_ellipse(type="t", level=0.70)+
+  # legend
+  guides(color=guide_legend(title="position from CC"))+
+  ggtitle(label = "MDS of samples from Halasen_edge by year", subtitle="presence-absence (jaccard distance)")
+hala_ecm_ordi_mdsjacc
 ```
 # *4 HALASEN_5P STUDY: randomly distributed retention trees*
 ## 4.1 design and sampling
@@ -1046,13 +1229,13 @@ hala_rrcurve_groups1
 hala_rrcurve_groups2
 
 circle_pq(physeq = hala_ecm, 
-                              fact = "specification", 
+                              fact = "treatment_edge", 
                               taxa = "Genus", 
                               min_prop_mod=0.001,
                               min_prop_tax=0.01,
-                              row_col = c("CC_edge" = "orange",
-                              "CC_middle" = "red",
-                              "FOR_middle" = "darkgreen"),
+                              row_col = c("CC_EDG" = "orange",
+                              "CC_MID" = "red",
+                              "FOR" = "darkgreen"),
                               grid_col= 1,
                               add_nb_seq = T) # distribution circle sample - taxonomy 
 
