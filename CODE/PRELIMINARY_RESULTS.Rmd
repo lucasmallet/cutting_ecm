@@ -29,11 +29,14 @@ BREUSCH PAGAN TEST:
 # Alternative Hypothesis (HA): Heteroscedasticity is present (the residuals are not distributed with equal variance)
 
 
+
 # *REMAINS TO DO* 
 - deciding about effect of variables (model -> stream + orientation + pool)
-- find a way to compute samples together if no significance (knowing that if we pool samplings UP-LO N-S together, we need to do it for all of them for comparison)
-- sampling design
+-- find a way to compute samples together if no significance (knowing that if we pool samplings UP-LO N-S together, we need to do it for all of them for comparison)
+-- if significance from environmental variables : consider using them as explanatory variables.
+--- PCA and testing correlation
 
+-testing autocorrelation in plots (if we want to analyse them independantly)
 
 - rarefactions pb 
 - venn pb (all common, nothing specific)
@@ -41,7 +44,6 @@ BREUSCH PAGAN TEST:
 - deciding between circle (focus on genus distribution among treatments) or barplot (focusing on treatment differences)
 - mds-nmds etc.
 - permanova/adonis
-- additional arguments (cf. transparency in others function inside circle_pq)
 - commenting ##
 - synthetic tab for MM 
 - ID the missing samples (and create a design table)
@@ -93,6 +95,9 @@ $-m ae
 module load ncbi-blast+
 blastn –db local_databse -query query_sequences.fst -out Output_file.txt -remote -max_target_seqs 1 -outfmt "6 qseqid sseqid evalue pident"
 
+# to transform summary() into df 
+summary_ecm_df <- data.frame(unclass(summary(ecmtax_df)), check.names = FALSE, stringsAsFactors = FALSE)
+
 
 # *0 FUNCTIONS - PALETTES* 
 
@@ -107,6 +112,8 @@ circle_allsite_genus <- circle_pq(ecm_phy, "site", taxa = "Phylum", add_nb_seq =
           row_col = c("darkred","#1F78B4","darkgreen"))
 
 sample_names(ecm_phy)
+
+
 ```
 # *1 MM RESULTS*
 ## DATA RUN
@@ -241,7 +248,7 @@ controls_kept <- c("sITS-standard2", "sITS-standard1", "sPCR_neg_1", "sPCR_neg_2
 ## final 159 samples -> ALL GOOD 
 ```
 ```{r missing samples}
-# considering physeq objects (ecm_phy,hala_ecm, hala5_ecm, fanga_ecm have been cleaned (sample supress if 0) by clean_pq() )
+# considering physeq objects (ecm_phy,ecm_phy, hala5_ecm, fanga_ecm have been cleaned (sample supress if 0) by clean_pq() )
 colnames(hala_sam)
 summary(hala_sam[,c(2,5:8)])
 table(hala_sam$plot,hala_sam$treatment)
@@ -269,7 +276,7 @@ length(miss_sam_clust_ctrl$sample_id)
 length(row.names(sam_controls_na)) # every control and NA are suppressed from the dataset (because 0 occurence of clusters)
 
 # hala
-miss_sam_clust_hala <- anti_join(x = sam_hala[,1:7], y = hala_ecm@sam_data[,1:7]) # exclude treatment_edge column because we changed factor values for this column
+miss_sam_clust_hala <- anti_join(x = sam_hala[,1:7], y = ecm_phy@sam_data[,1:7]) # exclude treatment_edge column because we changed factor values for this column
 miss_sam_clust_hala$sample_id
 
 # hala5
@@ -441,7 +448,7 @@ nrow(physeq@otu_table)    # 588
 nrow(ecm_phy@otu_table)   # 149
 nrow(sapr_phy@otu_table)  # 172 
 nrow(fanga_ecm@otu_table) # 37
-nrow(hala_ecm@otu_table)  # 100
+nrow(ecm_phy@otu_table)  # 100
 nrow(hala5_ecm@otu_table) # 49
 
 # representation of the total nb of reads
@@ -469,13 +476,71 @@ pourc_other <- sum(other_phy@otu_table)/sum(physeq@otu_table)*100; pourc_other #
 pourc_other + pourc_sapr + pourc_ecm
 
 # per site (rarefied)
-sum(hala_ecm@otu_table)
+sum(ecm_phy@otu_table)
 sum(hala5_ecm@otu_table)
 sum(fanga_ecm@otu_table)
 
-pourc_hala_ecm <- sum(hala_ecm@otu_table)/sum(hala@otu_table)*100; pourc_hala_ecm # 29.2% ecm hala
+pourc_ecm_phy <- sum(ecm_phy@otu_table)/sum(hala@otu_table)*100; pourc_ecm_phy # 29.2% ecm hala
 pourc_hala5_ecm <- sum(hala5_ecm@otu_table)/sum(hala5@otu_table)*100; pourc_hala5_ecm # 23.1 % ecm hala5  
 pourc_fanga_ecm <- sum(fanga_ecm@otu_table)/sum(fanga@otu_table)*100; pourc_fanga_ecm # 12.6% fanga
+```
+
+```{r sequencing depth changing between pool ?}
+richness_allc_raref <- specnumber(t(otu_rarefied)) # richness calc (same as nonrarefied ofc) 
+summary(richness_allc_raref) # richness of samples from ALL Fungi clusters
+# hist(richness_allc_raref) # PLOT 
+
+reads_sum_per_sample <- data.frame(rownames(otu_t), rowSums(otu_t)) # after deleting <1% relative abundance
+summary(reads_sum_per_sample) # sum of reads per sample for ALL Fungi clusters 
+shapiro.test(reads_sum_per_sample$rowSums.otu_t.) # normal distribution
+#hist(reads_sum_per_sample$rowSums.otu_t.) # PLOT # rarefying based on the min sample depth (here 419)
+low_seqdepth_samples <- which(reads_sum_per_sample < 300, arr.ind = T) %>% data.frame() %>% print() # samples with sequencing depth under a threshold
+list_low_seqdepth_samples <- dput(as.character(rownames(low_seqdepth_samples))) # convert into the format c(x; y; ...; z)
+# TOASK -> should we delete these samples ? 
+# View(sam[list_low_seqdepth_samples,])
+## check pool 1 2 sequencing depth difference
+
+physeq_notrarefied_p1 <- subset_samples(physeq_001kept, physeq_001kept@sam_data$pool=="1") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
+
+physeq_notrarefied_p2 <- subset_samples(physeq_001kept, physeq_001kept@sam_data$pool=="2") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
+
+r_sps <- rowSums(t(physeq_001kept@otu_table)) # r_sps = sum per sample
+summary(r_sps)
+#hist(r_sps) #PLOT
+
+rp1_sps <- rowSums(t(physeq_notrarefied_p1@otu_table))
+summary(rp1_sps)
+pool1 <- 1
+rp1_sps_df <- data.frame("pool" = 1, "sum_reads" = rp1_sps)
+
+rp2_sps <- rowSums(t(physeq_notrarefied_p2@otu_table)) 
+summary(rp2_sps)
+rp2_sps_df <- data.frame("pool" = 2, "sum_reads" = rp2_sps)
+
+r_sps_df <- bind_rows(rp1_sps_df, rp2_sps_df)
+r_sps_df <- cbind(physeq_001kept@sam_data$year, physeq_001kept@sam_data$plot, r_sps_df)
+colnames(r_sps_df) <- c("year", "plot", "pool", "sum_reads")
+r_sps_df$pool <- as.factor(r_sps_df$pool)
+
+# graphical representation
+mu_pool <- ddply(r_sps_df, "pool", summarise, grp.mean=mean(sum_reads)) # calculed mean of each group 
+ggplot(r_sps_df, aes(x = sum_reads, color = pool, fill = pool)) +
+  geom_histogram(aes(y = ..density..), alpha = 0.5, position = "identity")+
+  geom_density(alpha=0.3)+
+  geom_vline(data = mu_pool, aes(xintercept=grp.mean, color= pool),
+           linetype="dashed")
+
+boxplot(r_sps ~ physeq_001kept@sam_data$pool)
+boxplot(r_sps ~ physeq_001kept@sam_data$plot)
+
+# statistical test
+lm_seq_depth <- lmer(sum_reads ~ pool + (pool | plot) + (pool | year), r_sps_df)
+qqnorm(residuals(lm_seq_depth))
+qqline(residuals(lm_seq_depth))
+plot(lm_seq_depth)
+summary(lm_seq_depth)
+anova(lm_seq_depth)  # if test conditions arent fulfilled 
+# TOASK seems to be significant difference in seq depth for the pools
 ```
 
 # *2 OVERVIEW DATA FROM SITES*
@@ -515,7 +580,7 @@ ecm_phy_rrcurve
 # sampling design
 colnames(hala_sam)
 summary(hala_sam[,c(2,5:8)])
-table(hala_ecm@sam_data$plot, hala_ecm@sam_data$treatment)
+table(ecm_phy@sam_data$plot, ecm_phy@sam_data$treatment)
 table(sam_hala$plot, sam_hala$treatment)
 
 # lacking :
@@ -525,23 +590,51 @@ length(sam_hala$sample_id)
 
 ## after clean_pq (empty samples):
 ### 2 (n=1); 9 (n=2); 3 (n=3); 8 (n=1) -> N= 7 
-length(hala_ecm@sam_data$sample_id) # N= 7 missing after bioinformatic analysis 
+length(ecm_phy@sam_data$sample_id) # N= 7 missing after bioinformatic analysis 
 # result: 3 (n=3); 8 (n=1) 
 
-table(hala_ecm_12@sam_data$plot, hala_ecm_12@sam_data$treatment)
-table(hala_ecm_18@sam_data$plot, hala_ecm_18@sam_data$treatment)
+table(phy_12@sam_data$plot, phy_12@sam_data$treatment)
+table(phy_18@sam_data$plot, phy_18@sam_data$treatment)
 
-summary(hala_ecm@sam_data$treatment_edge)
-summary(as.factor(hala@sam_data$treatment_edge))
+summary(ecm_phy@sam_data$treatment_edge)
+summary(as.factor(phy@sam_data$treatment_edge))
 
 # nb genus
-colnames(hala_ecm@tax_table)
-as.factor(hala_ecm@tax_table[,5]) %>% droplevels() %>% levels() 
-genus_nb_hala <- as.factor(hala_ecm@tax_table[,5]) %>% droplevels() %>% levels() %>% length()
+colnames(ecm_phy@tax_table)
+as.factor(ecm_phy@tax_table[,5]) %>% droplevels() %>% levels() 
+genus_nb_hala <- as.factor(ecm_phy@tax_table[,5]) %>% droplevels() %>% levels() %>% length()
 ## 23 genus
 ## attribution facolors, or whatever to have proper constrasted colors on graphicals representations
 
-ggvenn_pq(hala_ecm, fact="year", taxonomic_rank = "Genus")
+##### checking cluster nb etc
+phytax_df <- data.frame(phy@tax_table) %>% lapply(as.factor) %>% data.frame()
+rownames(phytax_df) <- rownames(phy@tax_table)
+str(phytax_df)
+summary_all <- summary(phytax_df) %>% print()
+summary_all_df <- data.frame(unclass(summary(phytax_df)), check.names = FALSE, stringsAsFactors = FALSE)
+
+ecmtax_df <- data.frame(ecm_phy@tax_table) %>% lapply(as.factor) %>% data.frame()
+rownames(ecmtax_df) <- rownames(ecm_phy@tax_table)
+str(ecmtax_df)
+summary_ecm <- summary(ecmtax_df) %>% print()
+summary_ecm_df <- data.frame(unclass(summary(ecmtax_df)), check.names = FALSE, stringsAsFactors = FALSE)
+
+ecmtax_df[, c("Phylum", "Class", "Family", "Genus", "Fruitbody_type_template")] %>%
+  gather(variable, value) %>%
+  ggplot()+
+  geom_bar(aes(x = variable, y = ..count../sum(..count..)*5, fill = value), color= " black", position = "stack", show.legend = FALSE)+
+  geom_text(stat = "count", aes(x = variable, label =  value,  y = ..count../sum(..count..)*5, group = value), position = "stack", vjust = 1, alpha = 1)+
+  scale_y_continuous(labels = scales::percent)+
+  ylab("") # 5 because of the nb of variables
+
+# should be better if arrange in proper order
+
+colnames(ecm_phy@otu_table)
+colSums(ecm_phy@otu_table) %>% summary()
+# total changes from colsums just after rarefaction because not_ecm clusters are supressed
+colSums(phy@otu_table) %>% summary 
+
+hist(colSums(ecm_phy@otu_table))
 ```
 
 - change between 2012 2018 (see below) -> could be explained by a difference in the biomolecular methods ? we should not expect any difference in forest control treatment between years
@@ -549,29 +642,52 @@ ggvenn_pq(hala_ecm, fact="year", taxonomic_rank = "Genus")
 ## 3.1 stat test
 ```{r EDGE - NORTH & UPPER LOWER }
 # creating diversity variables
-div_hala <- vegan::diversity(x = t(hala_ecm@otu_table),
+div_hala <- vegan::diversity(x = t(ecm_phy@otu_table),
                              index = "shannon")
-rich_hala <- vegan::specnumber(x= t(hala_ecm@otu_table))
+rich_hala <- vegan::specnumber(x= t(ecm_phy@otu_table))
 summary(rich_hala)
 summary(div_hala)
 
-df_div_hala <- data.frame(hala_ecm@sam_data, div_hala, rich_hala)
+df_div_hala <- data.frame(ecm_phy@sam_data, div_hala, rich_hala)
 
 stde_hala <- tapply(df_div_hala$div_hala, df_div_hala$treatment_edge, stde) # if needed for tables
 median_hala <- tapply(df_div_hala$div_hala,df_div_hala$treatment_edge, median)
 min_hala <- tapply(df_div_hala$div_hala,df_div_hala$treatment_edge, min)
 max_hala <- tapply(df_div_hala$div_hala,df_div_hala$treatment_edge, max)
 
-boxplot(div_hala ~ hala_ecm@sam_data$treatment_edge)
-boxplot(rich_hala ~ hala_ecm@sam_data$treatment_edge)
+boxplot(div_hala ~ ecm_phy@sam_data$treatment_edge)
+boxplot(rich_hala ~ ecm_phy@sam_data$treatment_edge) # same as hill0 (down) -> good
 
 # model all
+colnames(df_div_hala)
+df_div_hala[, c(3:13)] <- df_div_hala[, c(3:13)] %>% lapply(as.factor) %>% data.frame()
 str(df_div_hala)
-lm_div <- lm(rich_hala ~ specification_value, data = df_div_hala) 
-par(mfrow=c(2,2))
-plot(lm_div)
+
+# assumption test for model
+hist(rich_hala) # not normal : poisson distribution lambda = 2 
+
+glmm_rich_pois <- lme4::glmer(rich_hala ~ specification_value + treatment_edge + (specification_value| plot) + (treatment_edge| plot), 
+                      family = poisson(link = "log"),
+                      data = df_div_hala) # glmm : poisson transformation on richness
+
+lm_rich <- lme4::lmer(rich_hala ~ specification_value + treatment_edge + (specification_value| plot) + (treatment_edge| plot), 
+                      data = df_div_hala) # linear model without transformation
+
+par(mfrow=c(1, 3))
+hist(rich_hala) # graphical distrib
+hist(residuals(glmm_rich_pois))
+hist(residuals(lm_rich))
+shapiro.test(rich_hala) # shapiro tests
+shapiro.test(residuals(glmm_rich_pois))
+shapiro.test(residuals(lm_rich))
+
+par(mfrow=c(2, 2))
+plot(glmm_rich)
+qqnorm(residuals(glmm_rich_pois))
+qqline(residuals(glmm_rich_pois))
+
 par(mfrow=c(1,1))
-hist(lm_div$res)
+
 shapiro.test(lm_div$res) # OK
 dwtest(lm_div)  # OK
 bptest(lm_div)  # OK
@@ -579,7 +695,10 @@ Anova(lm_div, type="II")
 anova(lm_div)
 TukeyHSD(aov(lm_div), "specification_value")
 
-boxplot(rich_hala ~ hala_ecm@sam_data$specification_value)
+summary(glmm_rich_pois)
+
+
+boxplot(rich_hala ~ ecm_phy@sam_data$specification_value)
 
 # model all addition ## TO RESOLVE AND CHOOSE
 str(df_div_hala)
@@ -595,12 +714,17 @@ Anova(lm_div, type="II")
 anova(lm_div)
 TukeyHSD(aov(lm_div), "specification_value")
 
-boxplot(rich_hala ~ hala_ecm@sam_data$specification_value)
+boxplot(rich_hala ~ ecm_phy@sam_data$specification_value)
 ```
+```{r TREATMENT}
+# fixed variables : treatment + year
+# random variables: plot ()
+```
+
 
 ## 3.2.1 alpha
 ```{r rarecurve}
-hala_rrcurve_groups1 <- phyloseq.extended::ggrare(hala_grp_12, step = 10, color = "treatment_edge",plot=F, se=T)+ 
+hala_rrcurve_groups1 <- phyloseq.extended::ggrare(yr_12, step = 10, color = "treatment_edge",plot=F, se=T)+ 
   facet_wrap(~year)+
   labs(x = "Group size",
        y =  "OTU richness",
@@ -615,7 +739,7 @@ hala_rrcurve_groups1 <- phyloseq.extended::ggrare(hala_grp_12, step = 10, color 
                                 "FOR" = "darkgreen"))
 hala_rrcurve_groups1
 
-hala_rrcurve_groups2 <- phyloseq.extended::ggrare(hala_grp_18, step = 10, color = "treatment_edge",plot=F, se=T)+ 
+hala_rrcurve_groups2 <- phyloseq.extended::ggrare(yr_18, step = 10, color = "treatment_edge",plot=F, se=T)+ 
   facet_wrap(~year)+
   labs(x = "Group size",
        y =  "OTU richness",
@@ -629,9 +753,17 @@ hala_rrcurve_groups2 <- phyloseq.extended::ggrare(hala_grp_18, step = 10, color 
                                 "CC_MID" = "red",
                                 "FOR" = "darkgreen"))
 hala_rrcurve_groups2
+
+
+hala_rrcurve <- phyloseq.extended::ggrare(ecm_phy, step = 10, color = "treatment_edge", plot = F, se=T)+
+  labs(x = "Group size",
+       y =  "OTU richness",
+       title = "rarefaction curves by treatment",
+       color = "Treatment")
+hala_rrcurve
 ```
 ```{r circle graph: genus distribution among treatments}
-circle_pq(physeq = hala_ecm, 
+circle_pq(physeq = ecm_phy, 
                               fact = "treatment_edge", 
                               taxa = "Genus", 
                               min_prop_mod=0.001,
@@ -642,8 +774,10 @@ circle_pq(physeq = hala_ecm,
                               grid_col= 1,
                               add_nb_seq = T)
 ```
-```{r hill otu}
-hala_hill_treatment <- hill_pq(physeq = hala_ecm_t, 
+```{r alpha diversity indexes on otu}
+plot_richness(ecm_phy, measures = c("Chao1", "ACE", "InvSimpson"), nrow=3, sortby = "Chao1", x = "treatment_edge")
+
+hala_hill_treatment <- hill_pq(physeq = ecm_phy_t, 
                                variable = "treatment_edge",
                                color_fac = NA, 
                                letters = F)
@@ -686,36 +820,38 @@ hala_hill_treatment[[4]]
 hala_hill_treatment[[4]] # TukeyHSD test
 ```
 ```{r barplot genus distribution}
-genus_nb_hala <- as.factor(hala_ecm@tax_table[,5]) %>% droplevels() %>% levels() %>% length() %>% print()
+genus_nb_hala <- as.factor(ecm_phy@tax_table[,5]) %>% droplevels() %>% levels() %>% length() %>% print()
 ## OTU Genus count (0;1) by treatment
-hala_ecm_ggplot1 <- phyloseq::plot_bar(as_binary_otu_table(hala_ecm), x = "treatment_edge") 
-hala_ecm_ggplot1 <- ggplot(hala_ecm_ggplot1$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment_edge, y = Abundance))+
-  geom_bar(stat="identity", position = "stack") +
+ecm_phy_ggplot1 <- phyloseq::plot_bar(as_binary_otu_table(ecm_phy), x = "treatment_edge") 
+
+ecm_phy_ggplot1 <- ggplot(ecm_phy_ggplot1$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment_edge, y = Abundance))+
+  geom_bar(stat = "identity", position = "stack") +
   scale_fill_manual(values = funky(genus_nb_hala))+
   facet_grid(~year, scale="free")+
   labs(title="OTU Genus count (0;1) by position from CC and year", subtitle = "Halasen_edge")+
   xlab("position from CC")+
   guides(fill=guide_legend(title="Genus"))+
   theme(axis.text.x=element_text(color="coral4", size=8, angle=20))
-hala_ecm_ggplot1
+ecm_phy_ggplot1
 
 # OTU Genus abundance by treatment
-hala_ecm_ggplot2 <- phyloseq::plot_bar(hala_ecm, x = "treatment_edge") 
-hala_ecm_ggplot2 <- ggplot(hala_ecm_ggplot2$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment_edge, y = Abundance))+
+ecm_phy_ggplot2 <- phyloseq::plot_bar(ecm_phy, x = "treatment_edge") 
+ecm_phy_ggplot2 <- ggplot(ecm_phy_ggplot2$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment_edge, y = Abundance))+
   geom_bar(stat="identity", position = "stack")+
   scale_fill_manual(values = funky(genus_nb_hala))+
   facet_grid(~year, scale="free")+
   labs(title="OTU Genus abundance by position from CC and year", subtitle = "Halasen_edge")+
   xlab("position from CC")+
+  ylab("number of seq. reads (rarefied)")+
   guides(fill=guide_legend(title="Genus"))+
   theme(axis.text.x=element_text(color="coral4", size=8, angle=20))
-hala_ecm_ggplot2
+ecm_phy_ggplot2
 ```
 ```{r barplot OTUs distribution}
-otu_nb_hala <- as.factor(hala_ecm@tax_table[,6]) %>% droplevels() %>% levels() %>% length()
+otu_nb_hala <- as.factor(ecm_phy@tax_table[,6]) %>% droplevels() %>% levels() %>% length()
 ## OTU count (0;1) by treatment
-hala_ecm_ggplot3 <- phyloseq::plot_bar(as_binary_otu_table(hala_ecm), x = "treatment_edge") 
-hala_ecm_ggplot3 <- ggplot(hala_ecm_ggplot3$data, aes(fill= fct_reorder(as.factor(OTU_ID), Abundance), x=treatment_edge, y = Abundance))+
+ecm_phy_ggplot3 <- phyloseq::plot_bar(as_binary_otu_table(ecm_phy), x = "treatment_edge") 
+ecm_phy_ggplot3 <- ggplot(ecm_phy_ggplot3$data, aes(fill= fct_reorder(as.factor(OTU_ID), Abundance), x=treatment_edge, y = Abundance))+
   geom_bar(stat="identity", position = "stack") +
   scale_fill_manual(values = funky(otu_nb_hala))+
   facet_grid(~year, scale="free")+
@@ -723,12 +859,12 @@ hala_ecm_ggplot3 <- ggplot(hala_ecm_ggplot3$data, aes(fill= fct_reorder(as.facto
   xlab("position from CC")+
   guides(fill=guide_legend(title="Genus"))+
   theme(axis.text.x=element_text(color="coral4", size=8, angle=20))
-hala_ecm_ggplot3
+ecm_phy_ggplot3
 ```
 ```{r boxplot}
 # OTU richness 
 
-hala_box1 <- phyggplot( aes(x=name, y=value, fill=name)) +
+hala_box1 <- ggplot( aes(x=name, y=value, fill=name)) +
     geom_boxplot() +
     scale_fill_viridis(discrete = TRUE, alpha=0.6) +
     geom_jitter(color="black", size=0.4, alpha=0.9) +
@@ -740,7 +876,7 @@ hala_box1 <- phyggplot( aes(x=name, y=value, fill=name)) +
     ggtitle("A boxplot with jitter") +
     xlab("")
 
-phyloseq::psmelt(hala_ecm) %>%
+phyloseq::psmelt(ecm_phy) %>%
 ggplot(data = ., aes(x = treatment_edge, y = Abundance)) +
   geom_boxplot(outlier.shape  = NA) +
   geom_jitter(aes(color = ), height = 0, width = 0.2) +
@@ -756,14 +892,14 @@ ggplot(data = ., aes(x = treatment, y = Abundance)) +
 
 # abundance
 
-hala_box2 <- boxplot_abundance(d= hala_ecm, x='treatment_edge', y='otu_table',
+hala_box2 <- boxplot_abundance(d= ecm_phy, x='treatment_edge', y='otu_table',
    line='subject')
 ```
 
 ## 3.2.2 multivariate analysis
 ```{r multivariate representation}
-hala_ecm_ordi_mdsjacc <- ordinate(as_binary_otu_table(hala_ecm), method = "MDS", dist="jaccard")
-hala_ecm_ordi_mdsjacc <- plot_ordination(hala_ecm, hala_ecm_ordi_mdsjacc, type="samples", color="treatment_edge",label="sample_id")+
+ecm_phy_ordi_mdsjacc <- ordinate(as_binary_otu_table(ecm_phy), method = "MDS", dist="jaccard")
+ecm_phy_ordi_mdsjacc <- plot_ordination(ecm_phy, ecm_phy_ordi_mdsjacc, type="samples", color="treatment_edge",label="sample_id")+
   geom_point(size=2)+
   facet_wrap(~year)+
   # color and elipse
@@ -774,10 +910,10 @@ hala_ecm_ordi_mdsjacc <- plot_ordination(hala_ecm, hala_ecm_ordi_mdsjacc, type="
   # legend
   guides(color=guide_legend(title="position from CC"))+
   ggtitle(label = "MDS of samples from Halasen_edge by year", subtitle="presence-absence (jaccard distance)")
-hala_ecm_ordi_mdsjacc
+ecm_phy_ordi_mdsjacc
 
-hala_ecm_ordi_mdsbray <- ordinate(hala_ecm, method = "MDS", dist="bray")
-hala_ecm_ordi_mdsbray <- plot_ordination(hala_ecm, hala_ecm_ordi_mdsbray, type="samples", color="treatment_edge",label="sample_id")+
+ecm_phy_ordi_mdsbray <- ordinate(ecm_phy, method = "MDS", dist="bray")
+ecm_phy_ordi_mdsbray <- plot_ordination(ecm_phy, ecm_phy_ordi_mdsbray, type="samples", color="treatment_edge",label="sample_id")+
   geom_point(size=2)+
   facet_wrap(~year)+
   # color and elipse
@@ -788,10 +924,10 @@ hala_ecm_ordi_mdsbray <- plot_ordination(hala_ecm, hala_ecm_ordi_mdsbray, type="
   # legend
   guides(color=guide_legend(title="position from CC"))+
   ggtitle(label = "MDS of samples from Halasen_edge by year",subtitle = "abundance (bray-curtis distance)")
-hala_ecm_ordi_mdsbray
+ecm_phy_ordi_mdsbray
 
-hala_ecm_ordi_phyl_mdsbray <- ordinate(hala_ecm, method = "MDS", dist="bray")
-plot_ordination(hala_ecm, hala_ecm_ordi_phyl_mdsbray, type="taxa", color="Order", shape="Phylum",label="sample_id")+
+ecm_phy_ordi_phyl_mdsbray <- ordinate(ecm_phy, method = "MDS", dist="bray")
+plot_ordination(ecm_phy, ecm_phy_ordi_phyl_mdsbray, type="taxa", color="Order", shape="Phylum",label="sample_id")+
   geom_point(size=2)+
   # color and elipse
   scale_color_manual(values =cols25(10))+
@@ -803,8 +939,8 @@ plot_ordination(hala_ecm, hala_ecm_ordi_phyl_mdsbray, type="taxa", color="Order"
 ########## 
 # for specification_values
 
-hala_ordi_specvalues_mdsjacc <- ordinate(as_binary_otu_table(hala_ecm), method = "MDS", dist="jaccard")
-hala_ecm_ordi_mdsjacc <- plot_ordination(hala_ecm, hala_ordi_specvalues_mdsjacc, type="samples", color="specification_value",label="sample_id")+
+hala_ordi_specvalues_mdsjacc <- ordinate(as_binary_otu_table(ecm_phy), method = "MDS", dist="jaccard")
+ecm_phy_ordi_mdsjacc <- plot_ordination(ecm_phy, hala_ordi_specvalues_mdsjacc, type="samples", color="specification_value",label="sample_id")+
   geom_point(size=2)+
   facet_wrap(~year)+
   # color and elipse
@@ -816,7 +952,7 @@ hala_ecm_ordi_mdsjacc <- plot_ordination(hala_ecm, hala_ordi_specvalues_mdsjacc,
   # legend
   guides(color=guide_legend(title="position from CC"))+
   ggtitle(label = "MDS of samples from Halasen_edge by year", subtitle="presence-absence (jaccard distance)")
-hala_ecm_ordi_mdsjacc
+ecm_phy_ordi_mdsjacc
 ```
 # *4 HALASEN_5P STUDY: randomly distributed retention trees*
 ## 4.1 design and sampling
@@ -1228,12 +1364,12 @@ sac_f_raw # cluster size accumulation curve from all fungi clusters
 table(hala_sam$plot,hala_sam$treatment)
 
 # number of genus
-as.factor(hala_ecm@tax_table[,5]) %>% droplevels() %>% levels() 
+as.factor(ecm_phy@tax_table[,5]) %>% droplevels() %>% levels() 
 
 hala_rrcurve_groups1
 hala_rrcurve_groups2
 
-circle_pq(physeq = hala_ecm, 
+circle_pq(physeq = ecm_phy, 
                               fact = "treatment_edge", 
                               taxa = "Genus", 
                               min_prop_mod=0.001,
@@ -1250,13 +1386,13 @@ hala_hill1 # ie shannon index
 hala_hill2 # ie simpson index
 hala_hill_treatment[[4]] # tukeyHSD test
 
-hala_ecm_ggplot1 # distribution genus (0;1)
-hala_ecm_ggplot2 # distribution genus (nb of reads)
-hala_ecm_ggplot3 # OTU count (0,1)
-hala_ecm_ggplot4 # OTU abundance (nb reads)
+ecm_phy_ggplot1 # distribution genus (0;1)
+ecm_phy_ggplot2 # distribution genus (nb of reads)
+ecm_phy_ggplot3 # OTU count (0,1)
+ecm_phy_ggplot4 # OTU abundance (nb reads)
 
-hala_ecm_ordi_mdsjacc # MDS jaccard (0;1)
-hala_ecm_ordi_mdsbray # MDS bray-curtis (nb of reads)
+ecm_phy_ordi_mdsjacc # MDS jaccard (0;1)
+ecm_phy_ordi_mdsbray # MDS bray-curtis (nb of reads)
 ```
 ```{r fangamon}
 # design

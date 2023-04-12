@@ -25,6 +25,7 @@ library(ade4)
 library(lme4)
 library(lmtest)
 library(reshape2)
+library(data.table)
 ```
 ```{r color palette}
 pals::pal.bands(alphabet, alphabet2, cols25, glasbey, kelly, polychrome, 
@@ -249,7 +250,7 @@ verif_sum_hell <- colSums(otu_hellinger) %>% summary() %>% print() # # verificat
 rd_sps <- data.frame(rownames(otu_t), rowSums(otu_t)) # read sum per sample
 hist(rd_sps$rowSums.otu_t.)
 
-# rarefaction 
+# rarefaction based on all 
 otu_t0 <- t(otu_001)
 otu_t <- matrix(as.numeric(unlist(otu_t0)),
               ncol = ncol(otu_t0),
@@ -283,8 +284,6 @@ ggplot(rd_sps_raref_gg, aes(x = value, color = variable, fill = variable))+
   ggtitle("Number of samples per read sum") # raref worked good
 ```
 
-
-
 *CREATION OF PHYSEQ OBJECTS*
 ```{r physeq objects}
 # creating the physeq objects 
@@ -314,64 +313,6 @@ sample_names(physeq)
 length(sample_names(physeq)) # 154 samples, as expected 
 ```
 
-```{r sequencing depth changing between pool ?}
-richness_allc_raref <- specnumber(t(otu_rarefied)) # richness calc (same as nonrarefied ofc) 
-summary(richness_allc_raref) # richness of samples from ALL Fungi clusters
-# hist(richness_allc_raref) # PLOT 
-
-reads_sum_per_sample <- data.frame(rownames(otu_t), rowSums(otu_t)) # after deleting <1% relative abundance
-summary(reads_sum_per_sample) # sum of reads per sample for ALL Fungi clusters 
-shapiro.test(reads_sum_per_sample$rowSums.otu_t.) # normal distribution
-#hist(reads_sum_per_sample$rowSums.otu_t.) # PLOT # rarefying based on the min sample depth (here 419)
-low_seqdepth_samples <- which(reads_sum_per_sample < 300, arr.ind = T) %>% data.frame() %>% print() # samples with sequencing depth under a threshold
-list_low_seqdepth_samples <- dput(as.character(rownames(low_seqdepth_samples))) # convert into the format c(x; y; ...; z)
-# TOASK -> should we delete these samples ? 
-# View(sam[list_low_seqdepth_samples,])
-## check pool 1 2 sequencing depth difference
-
-physeq_notrarefied_p1 <- subset_samples(physeq_001kept, physeq_001kept@sam_data$pool=="1") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
-
-physeq_notrarefied_p2 <- subset_samples(physeq_001kept, physeq_001kept@sam_data$pool=="2") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
-
-r_sps <- rowSums(t(physeq_001kept@otu_table)) # r_sps = sum per sample
-summary(r_sps)
-#hist(r_sps) #PLOT
-
-rp1_sps <- rowSums(t(physeq_notrarefied_p1@otu_table))
-summary(rp1_sps)
-pool1 <- 1
-rp1_sps_df <- data.frame("pool" = 1, "sum_reads" = rp1_sps)
-
-rp2_sps <- rowSums(t(physeq_notrarefied_p2@otu_table)) 
-summary(rp2_sps)
-rp2_sps_df <- data.frame("pool" = 2, "sum_reads" = rp2_sps)
-
-r_sps_df <- bind_rows(rp1_sps_df, rp2_sps_df)
-r_sps_df <- cbind(physeq_001kept@sam_data$year, physeq_001kept@sam_data$plot, r_sps_df)
-colnames(r_sps_df) <- c("year", "plot", "pool", "sum_reads")
-r_sps_df$pool <- as.factor(r_sps_df$pool)
-
-# graphical representation
-mu_pool <- ddply(r_sps_df, "pool", summarise, grp.mean=mean(sum_reads)) # calculed mean of each group 
-ggplot(r_sps_df, aes(x = sum_reads, color = pool, fill = pool)) +
-  geom_histogram(aes(y = ..density..), alpha = 0.5, position = "identity")+
-  geom_density(alpha=0.3)+
-  geom_vline(data = mu_pool, aes(xintercept=grp.mean, color= pool),
-           linetype="dashed")
-
-boxplot(r_sps ~ physeq_001kept@sam_data$pool)
-boxplot(r_sps ~ physeq_001kept@sam_data$plot)
-
-# statistical test
-lm_seq_depth <- lmer(sum_reads ~ pool + (pool | plot) + (pool | year), r_sps_df)
-qqnorm(residuals(lm_seq_depth))
-qqline(residuals(lm_seq_depth))
-plot(lm_seq_depth)
-summary(lm_seq_depth)
-anova(lm_seq_depth)  # if test conditions arent fulfilled 
-# TOASK seems to be significant difference in seq depth for the pools
-```
-
 ```{r taxa attribution mistakes}
 # reattribution of correct names
 physeq@tax_table[physeq@tax_table == "Gautieria_"] <- "Gautieria"
@@ -384,7 +325,6 @@ levels(as.factor(physeq@tax_table[,7])) # primary lifestyle levels
 
 physeq@tax_table[,7] <- plyr::revalue(physeq@tax_table[,7],
                                       c("algal_parasite" = "other_lifestyle",
-                                        "animal_endosymbiont" = "other_lifestyle",
                                         "animal_parasite" = "other_lifestyle",
                                         "dung_saprotroph" = "saprotroph",
                                         "ectomycorrhizal" = "ectomycorrhizal",
@@ -439,43 +379,48 @@ physeq@sam_data$stream[which(physeq@sam_data$specification_value == "LO")] <- "L
 physeq@sam_data$orient <- NA
 physeq@sam_data$orient[which(physeq@sam_data$specification_value == "N")] <- "N"
 physeq@sam_data$orient[which(physeq@sam_data$specification_value == "S")] <- "S"
+
+phy <- physeq
+```
+
+```{r}
+ecm_phy <- subset_taxa(physeq, primary_lifestyle == "ectomycorrhizal") %>% 
+clean_pq(remove_empty_samples = T, remove_empty_taxa = T, clean_samples_names = F)
+sapr_phy <- subset_taxa(physeq, primary_lifestyle == "saprotroph") %>% 
+clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = F)
+other_phy <- subset_taxa(physeq, (primary_lifestyle == "other_lifestyle" | is.na(primary_lifestyle)))  %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = F)
 ```
 
 ```{r subsets}
 # subsetting based on sites and guilds 
 # CTRL F + remove_empty_samples = T <-> remove_empty_samples = F
 
-physeq_12 <- subset_samples(physeq, physeq@sam_data$year=="2012") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
-physeq_18 <- subset_samples(physeq, physeq@sam_data$year=="2018") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
+ecm_12 <- subset_samples(ecm_phy, ecm_phy@sam_data$year=="2012") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
+ecm_18 <- subset_samples(ecm_phy, ecm_phy@sam_data$year=="2018") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
 
-orient <- subset_samples(physeq, physeq@sam_data$specification_value %in% c("N", "S")) %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
-stream <- subset_samples(physeq, physeq@sam_data$specification_value %in% c("UP", "LO")) %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
+orient <- subset_samples(ecm_phy, ecm_phy@sam_data$specification_value %in% c("N", "S")) %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
+stream <- subset_samples(ecm_phy, ecm_phy@sam_data$specification_value %in% c("UP", "LO")) %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
+
+colnames(ecm_otusam)
+ecm_otusam <- data.frame(ecm_phy@sam_data, t(ecm_phy@otu_table))
 ```
 
 *VAR TRANSFO FOR ANALYSIS*
-
 ```{r transfo variables}
-hala_sam <- lapply(physeq@sam_data, as.factor) %>% as.data.frame()
+sam <- lapply(physeq@sam_data, as.factor) %>% as.data.frame()
 sample_data(physeq)$year_factor <- as.factor(sample_data(physeq)$year)
 ```
 
 ```{r transposing otu table in physq object for hill_pq}
-physeq_otu_t <- t(physeq@otu_table)
-physeq_sam <- physeq@sam_data
-physeq_tax <- physeq@tax_table
-physeq_t <- phyloseq(physeq_otu_t,physeq_sam,physeq_tax)
+phy_otu_t <- t(physeq@otu_table)
+phy_sam <- physeq@sam_data
+phy_tax <- physeq@tax_table
+
+ecm_phy_otu_t <- t(ecm_phy@otu_table) %>% otu_table()
+ecm_phy_t <- phyloseq(ecm_phy_otu_t, ecm_phy@sam_data, ecm_phy@tax_table)
 ```
 
 ```{r grouping by factor of insterest}
-hala_grp_12 <- merge_group(physeq_12, group = "treatment_edge",)
-hala_grp_18 <- merge_group(physeq_18, group = "treatment_edge",)
+yr_12 <- merge_group(ecm_12, group = "treatment_edge",)
+yr_18 <- merge_group(ecm_18, group = "treatment_edge",)
 ```
-
-```{r}
-ecm_phy <- subset_taxa(physeq, primary_lifestyle == "ectomycorrhizal") %>% 
-clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = F)
-sapr_phy <- subset_taxa(physeq, primary_lifestyle == "saprotroph") %>% 
-clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = F)
-other_phy <- subset_taxa(physeq, (primary_lifestyle == "other_lifestyle" | is.na(primary_lifestyle)))  %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = F)
-```
-
