@@ -255,7 +255,6 @@ colnames(otu_rarefied) <- colnames(otu_001)
 ```
 
 *CREATION OF PHYSEQ OBJECTS*
-
 ```{r physeq objects}
 # creating the physeq objects 
 otu_phy_rarefied <- otu_table(otu_rarefied, taxa_are_rows = TRUE)
