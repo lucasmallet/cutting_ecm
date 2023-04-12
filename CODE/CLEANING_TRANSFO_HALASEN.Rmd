@@ -4,26 +4,253 @@ output: html_document
 date: "2023-04-12"
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+*NOTES* TOASK : ctrl + F this and search - new variable : upper - lower - resolve otu pb - *LIBRARY*
+
+```{r packages}
+library(ggplot2) # Create Elegant Data Visualisations Using the Grammar of Graphics
+library(dplyr) # A Grammar of Data Manipulation
+library(tidyverse) # A Grammar of Data Manipulation
+library(vegan) # ecological statistical analysis
+library(phyloseq) # Handling and analysis of high-throughput microbiome census data 
+library(forcats) # Tools for Working with Categorical Variables
+library(MiscMetabar) # Analyze and visualize metabarcoding data
+library(circlize) # circular visualization
+library(ggVennDiagram) # venn diagrams 
+library(phyloseq.extended) # phyloseq packages with more options
+library (microbiomeutilities) # for rarefaction curves
+library(multcompView) # Visualizations of Paired Comparisons
+library(plyr)
+library(pals)
+library(ade4)
+library(lme4)
+library(lmtest)
+```
+```{r color palette}
+pals::pal.bands(alphabet, alphabet2, cols25, glasbey, kelly, polychrome, 
+  stepped, tol, watlington,
+  show.names=FALSE)
+
+funky <- grDevices::colorRampPalette(c("#A6CEE3","#1F78B4","#B2DF8A",
+"#33A02C","#FB9A99","#E31A1C",
+"#FDBF6F","#FF7F00","#CAB2D6",
+"#6A3D9A","#FFFF99","#B15928"))
+```
+```{r functions}
+outersect <- function(x, y) {
+  sort(c(setdiff(x, y),
+         setdiff(y, x)))
+} # extract uncommon values between x - y 
+
+stde <- function (x) {sqrt(var(x))/length(x)}
+```
+```{r dummy calc}
+# hellinger : sum of reads per sample = 1 ? (as same as relative abundance ?)
+
+#abund1 <- c(sample(0:250, n = 10))
 ```
 
-## R Markdown
+*DATA IMPORTATION AND MODIF*
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+```{r raw_data}
+setwd("H:/REDACTION/RESULTS/cutting_ecm/TRANSF_DATA2") 
+#data run
+run_data <- read.table("run_data.txt", header=T, sep="\t",na.strings=T,dec=".")
+colnames(run_data)
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+# all clusters
+raw_clust <- read.table("raw_clusters.txt",header=T,sep="\t",na.strings=T,dec=".") %>%
+  arrange(desc(Cluster_Size)) # importing and arrange by decreasing cluster size
+raw_clust[raw_clust==""] <- NA # putting NA when empty
+raw_clust[,4] <- as.character(raw_clust[,4]) # reference as.character
+raw_clust$Cluster_ID <- gsub('scata5670_','c',raw_clust$Cluster_ID) # replace character occurence in all cells
+rownames(raw_clust) <- raw_clust$Cluster_ID
+order <- raw_clust$Cluster_ID 
+order <- gsub('c','',raw_clust$Cluster_ID) # creating a vector order so we can arrange later
+raw_clust <- data.frame(cbind(order, raw_clust))
+raw_clust[,"order"] <- as.numeric(raw_clust[,"order"])
 
-```{r cars}
-summary(cars)
+# subsetting fungi X non-fungi
+raw_f_clust <- subset(raw_clust,!grepl("PLANT|NF",raw_clust[,5]))
+raw_nf_clust <- subset(raw_clust,grepl("PLANT|NF",raw_clust[,5]))
+```
+```{r tax-eco table }
+# only the 1st 1000 clusters 
+taxeco_id <- read.table("tax_table.txt",header=T,sep="\t") # change #N/A in excel in NA
+length(taxeco_id) # number of columns 
+length(rownames(taxeco_id)) # number of rows (ie clusters, 1st 1000 fungi)
+taxeco_id[,c(3:length(taxeco_id))] <- lapply(taxeco_id[,c(3:length(taxeco_id))], as.factor) 
+rownames(taxeco_id) <- taxeco_id$Cluster_ID # rownames of corresponding clusters
+taxeco_0 <- subset(taxeco_id[,c(3:length(taxeco_id)),]) 
+
+taxeco2 <- subset(taxeco_id[,c(3:length(taxeco_id)),]) 
+taxeco2 <- matrix(as.character(unlist(taxeco2)),
+              ncol = ncol(taxeco2),
+              nrow = nrow(taxeco2))
 ```
 
-## Including Plots
+```{r subsetting taxtable}
+id_taxeco <- raw_f_clust %>%
+  filter(Cluster_ID %in% taxeco_id$Cluster_ID) %>%
+  arrange(order) # filtering taxtable identified manually
+id_taxeco <- cbind("MANUAL_ID", id_taxeco)
 
-You can also embed plots, for example:
+unid_taxeco <- raw_f_clust %>%
+  filter(!Cluster_ID %in% taxeco_id$Cluster_ID) %>%
+  arrange(order) # filtering taxtable not identified 
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+taxeco_f <- dplyr::bind_rows(id_taxeco, unid_taxeco)
+colnames(taxeco_f)[1] <- "ID_TYPE"
+taxeco_f$ID_TYPE[is.na(taxeco_f$ID_TYPE)] <- "AUTO_ID" 
+
+taxeco_id <- cbind("MANUAL_ID", taxeco_id)
+colnames(taxeco_id)[1] <- "ID_TYPE"
+
+# not same length row between id_taxeco (998) and taxeco (999): not normal, can cause offset
+match_id <- taxeco_id$Cluster_ID %in% id_taxeco$Cluster_ID
+as.factor(match_id) %>% 
+  levels()
+which(match_id == "FALSE", arr.ind = T) # mismatch at row 240
+
+taxeco_id <- taxeco_id[-240,]
+
+match_id <- taxeco_id$Cluster_ID %in% id_taxeco$Cluster_ID # checking if resolved
+as.factor(match_id) %>% 
+  levels()
+which(match_id == "FALSE", arr.ind = T) # good
+
+###
+taxeco_id$Cluster_Size <- id_taxeco$Cluster_Size # reattributing the proper cluster_size values
+
+taxeco1 <- merge(taxeco_f, taxeco_id, all = T) %>%
+  arrange(order) # merging taxeco and idtaxeco 
+
+rownames(taxeco1) <- taxeco1$Cluster_ID
+
+# putting reference of AUTO_ID in OTU_ID
+which(taxeco1[,"ID_TYPE"] == "MANUAL_ID") %>% length() # finding the rows NOT concerned
+taxeco1$OTU_ID <- as.character(taxeco1$OTU_ID) # putting as character for next line
+taxeco1$OTU_ID <- c(taxeco1$OTU_ID[1:998],  taxeco1$Reference[999:length(taxeco1$Reference)]) # merging reference and otu_id 
+  
+# subsetting interesting variables
+colnames(taxeco1)
+taxeco <- taxeco1[, c(17:24,1)]
+taxeco <- sapply(taxeco, as.character) 
+rownames(taxeco) <- rownames(taxeco1) # cluster name in row
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r sample data}
+# sample data
+sam <- read.table("sample_table.txt",header=T,sep="\t",na.strings = T) 
+sam_no_match <- read.table("samples_no_match.txt",header=T,sep="\t") 
+
+sam[sam==""] <- NA # filling the blanck by NAs
+rownames(sam) <- sam$sample_id # after transposing, resolving pb with headers
+
+# subsetting design samples per site 
+sam_hala <- subset(sam, sam$site == "Halasen") # 61 samples
+sam_controls_na <- filter(sam, !site %in% c("Halasen", "Fangamon", "Halasen_p_5")) # 19 samples (or controls)
+```
+
+```{r otu table}
+otu_all <- read.table("otu_table.txt",header=F,sep="\t",na.strings = T) 
+otu_all = setNames(data.frame(t(otu_all[,-1])), otu_all[,1]) # transpose + 1st column (ie samples set as header
+## samples = columns, otu abundance = rows
+colnames(otu_all)[1] <- "Cluster_ID" # after transposing, resolving pb with headers
+nrow(otu_all) # total number of all clusters (ie fungi ecm or no-ecm, plants)
+rownames(otu_all) <- otu_all$Cluster_ID
+otu_all <- otu_all[-1] # deleting 1st column (cluster_id is now in rownames)
+colnames(otu_all)
+cluster_names_otu_all <- rownames(otu_all)
+
+# removing clusters with 0 rowsums 
+## relics of PCR mismatch tag (still amplified)
+## but clusters still there after the exclusion of mismatch tags (eg ITS7-49 x ITS4-48)
+otu_all <- sapply(otu_all, as.numeric) %>% as.data.frame()
+rownames(otu_all) <- cluster_names_otu_all
+which(rowSums(otu_all) == 0) %>% length() # clust with 0 reads = 557 (4050 - 557 = 3493)
+otu <- otu_all %>%
+  filter(!rowSums(otu_all) ==0) # suppression of these 557 clusters from otu matrix
+nrow(otu)
+ncol(otu)
+
+# controls and samples with 0 exclusion 
+not_samples_kept <- c("sITS-standard2", "sITS-standard1", "sPCR_neg_1", "sPCR_neg_2", "sQ2", "s49", "s97") # cf MM_RESULTS.Rmd ```{r DESIGN SAMPLES}  to understand how they are found 
+
+samples_kept_pq <- otu[, colnames(otu) %in% not_samples_kept] 
+clusters_in_controls <- which(samples_kept_pq >0, arr.ind = T) %>% 
+  rownames() %>% as.factor() %>% levels() %>% print() # 13 clusters found in controls samples
+otu_samples_out <- otu[, !(colnames(otu) %in% not_samples_kept)] # suppressing these samples from otu matrix
+ncol(otu_samples_out)
+
+# excluding NF clusters to rarefy only with fungi
+otu_fungi <- otu_samples_out %>%
+  filter(rownames(otu_samples_out) %in% rownames(taxeco)) # taxeco has only fungi clusters
+
+# creating otu_fungi_hala only for hala to rarefy on the unique same site
+otu_fungi_t <- t(otu_fungi) %>% as.data.frame()
+otu_fungi_t <- otu_fungi_t %>%
+  filter(rownames(otu_fungi_t) %in% rownames(sam_hala)) 
+otu_fungi <- t(otu_fungi_t) # transposing back
+nrow(otu_fungi) # 3493 - 3411 = 82 clusters suppressed
+
+# transfo into matrix
+otu1 <- matrix(as.numeric(unlist(otu_fungi)),
+              ncol = ncol(otu_fungi),
+              nrow = nrow(otu_fungi)) # puting array numeric and transforming in matrix for further functions 
+
+# re-attribution (after being deleted from matrix transfo)
+rownames(otu1) <- rownames(otu_fungi)
+colnames(otu1) <- colnames(otu_fungi)
+```
+
+```{r otu <1% suppresion}
+# data properties BEFORE suppresion of <1%
+
+# suppression of <1 %
+otu_relative <- prop.table(otu1, margin=2) # margin = 2 -> column sum and relative abundances
+verif_sum <- colSums(otu_relative) %>% summary() %>% print() # # verification: ok if 1 and some NAs
+otu_001_transf <- ifelse(otu_relative>0.01,otu1,0) # creating a new matrix where <1% reads are transformed into 0
+otu_001 <- subset(otu_001_transf, !rowSums(otu_001_transf)==0)
+
+nrow(otu_001_transf)
+nrow(otu_001)
+nrow(otu_001_transf) - nrow(otu_001) # 2822 clusters with relative abundance < 1% = suppressed -> 589 conserved 
+
+otu_notrarefied <- otu_001
+
+# data properties AFTER suppresion of <1%
+```
+
+```{r hellinger transformation}
+otu_hellinger <- sapply(otu_relative, sqrt)
+otu_hellinger <- matrix(as.numeric(unlist(otu_hellinger)),
+              ncol = ncol(otu_001_transf),
+              nrow = nrow(otu_001_transf))
+rownames(otu_hellinger) <- rownames(otu_001_transf)
+colnames(otu_hellinger) <- colnames(otu_001_transf)
+verif_sum_hell <- colSums(otu_hellinger) %>% summary() %>% print() # # verification: ok if 1 and some NAs
+```
+
+```{r otu rarefaction}
+# data properties BEFORE rarefaction
+
+
+# rarefaction 
+otu_t0 <- t(otu_001)
+otu_t <- matrix(as.numeric(unlist(otu_t0)),
+              ncol = ncol(otu_t0),
+              nrow = nrow(otu_t0))
+rownames(otu_t) <- rownames(otu_t0)
+colnames(otu_t) <- colnames(otu_t0)
+
+otu_rarefied <- as.data.frame(rrarefy(otu_t, min(rowSums(otu_t))))
+otu_rarefied <- t(otu_rarefied)
+otu_rarefied <- matrix(as.numeric(unlist(otu_rarefied)),
+              ncol = ncol(otu_rarefied),
+              nrow = nrow(otu_rarefied))
+
+rownames(otu_rarefied) <- rownames(otu_001)
+colnames(otu_rarefied) <- colnames(otu_001)
+
+# data properties AFTER rarefaction
+```
