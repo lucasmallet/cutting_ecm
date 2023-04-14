@@ -26,6 +26,8 @@ library(lme4)
 library(lmtest)
 library(reshape2)
 library(data.table)
+library(viridis) # palettes and themes
+library(hrbrthemes) # palettes and themes
 ```
 ```{r color palette}
 pals::pal.bands(alphabet, alphabet2, cols25, glasbey, kelly, polychrome, 

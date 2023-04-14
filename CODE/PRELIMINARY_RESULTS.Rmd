@@ -14,7 +14,7 @@ alt+o = close all
 shift+alt+o = open all
 
 dput(as.character(samples_missing_postscata)) # convert into the format c(x; y; ...; z)
-
+as.data.frame.matrix() # table to dataframe
 for ggplot: position = fill -> relative abundance 
 
 DURBIN WATSON TEST:
@@ -69,7 +69,7 @@ BREUSCH PAGAN TEST:
   -> ECM and "others" (saprobes, root-associated, parasitic)
   
 - Halasen edge study: spatial dependence among samples inside a same plot (distant from 7.5 meters from each other) but independence of others plots 
-  -> Should we consider the factor "plot" as random variable or just the concerned ones ? If so, how to do it ? GLMM, paired-ANOVA ? 
+  -> Should we consider the factor "plot" as random variable or just the concerned ones ? If so, how to do it ? GLMM, paidarkred-ANOVA ? 
   # Yes, you should probably use ”plot” as a random variable in a GLMM.
   
 -  to limit effect of dominant OTU (high nb of reads):
@@ -78,7 +78,7 @@ Hellinger transformation is sqrt (reads of species / total reads in sample) ie s
  - Zero occurence of OTUs or no reads in some samples -> leads to a biais:
   -- considering the samples with 0 OTU counted: min richness = 0 & N(samples) unchanged -> good for design
   
-  -- not considering them (ie erasing samples with 0 from dataset): min richness = 1 & N(samples) reduced -> no significant differences in mean comparison tests"
+  -- not considering them (ie erasing samples with 0 from dataset): min richness = 1 & N(samples) darkreduced -> no significant differences in mean comparison tests"
 
 Rarefaction
 Data.rar<-as.data.frame(rrarefy(data, min(rowSums(data))))
@@ -109,11 +109,13 @@ factor(list_mm)
 # circles physeq
 circle_allsite_genus <- circle_pq(ecm_phy, "site", taxa = "Phylum", add_nb_seq = F,
           grid_col = "darkgrey",
-          row_col = c("darkred","#1F78B4","darkgreen"))
+          row_col = c("darkdarkred","#1F78B4","darkgreen"))
 
 sample_names(ecm_phy)
 
-
+coltreatment <- c("CC_EDG" = "khaki2",
+                  "CC_MID" = "coral2",
+                  "FOR" = "springgreen4")
 ```
 # *1 MM RESULTS*
 ## DATA RUN
@@ -186,14 +188,14 @@ read_distribution <- plot_read_distribution(ecm_phy, groups = "site",
 print(read_distribution + theme_biome_utils())
 ```
 ```{r SAC nb read}
-sac_f_raw <- ggplot(raw_f_clust, aes(x=c(1:3968),y = cumsum(Cluster_Size)))+   geom_line(color="red")+
+sac_f_raw <- ggplot(raw_f_clust, aes(x=c(1:3968),y = cumsum(Cluster_Size)))+   geom_line(color="darkred")+
   geom_point(size=0.7,alpha=0.5)+
   coord_cartesian(xlim=c(0,3968),ylim=c(0,244367))+
   scale_y_continuous(name="cumulative cluster size", breaks=seq(0,244367,by=25000))+
   scale_x_continuous(name="number of cluster", breaks=seq(0,3968 ,by=200))+
-  geom_vline(xintercept=1000,lwd=0.6,colour="red",)+ 
-  annotate("text", x = 1050, y = 25000, label="1000 first clusters conserved", size = 4, angle=0, color = "red", hjust = 0)+
-  annotate("text", x= 1050, y= 15000, label="93.65% of total reads", size = 4, angle=0, color = "red", hjust = 0)+
+  geom_vline(xintercept=1000,lwd=0.6,colour="darkred",)+ 
+  annotate("text", x = 1050, y = 25000, label="1000 first clusters conserved", size = 4, angle=0, color = "darkred", hjust = 0)+
+  annotate("text", x= 1050, y= 15000, label="93.65% of total reads", size = 4, angle=0, color = "darkred", hjust = 0)+
   theme(axis.text.x=element_text(color="coral4", size=8, angle=60))+
   ggtitle("Cumulative cluster size curve from all fungi clusters") 
 
@@ -552,7 +554,7 @@ ggvenn_pq(ecm_phy, fact="site", taxonomic_rank = "Genus")
 circle_pq(ecm_phy, "site", taxa = "Genus", add_nb_seq = F) # only 53,57% plotted
 circle_pq(ecm_phy, "site", taxa = "Phylum", add_nb_seq = F,
           grid_col = "darkgrey",
-          row_col = c("darkred","#1F78B4","darkgreen"))
+          row_col = c("darkdarkred","#1F78B4","darkgreen"))
 
 read_distrib <- plot_read_distribution(
   ecm_phy, groups = "site", 
@@ -578,32 +580,52 @@ ecm_phy_rrcurve
 ## 3.0 design and sampling
 ```{r overview }
 # sampling design
-colnames(hala_sam)
-summary(hala_sam[,c(2,5:8)])
-table(ecm_phy@sam_data$plot, ecm_phy@sam_data$treatment)
-table(sam_hala$plot, sam_hala$treatment)
+colnames(sam)
+summary(sam[,c(2,5:8)])
 
-# lacking :
-## after clustering:
-### 2 (n=1); 9 (n=2) -> N=3 missing in initial sample_data matrix (64 samples in design)
-length(sam_hala$sample_id)
+# post biomol design
+table_postbiomol <- table(sam_hala$treatment, sam_hala$plot) %>% print() # post biomol
+rowSums(table_postbiomol) ## N = 3 missing in initial sample_data matrix (64 samples in design) missing after the biomolecular analysis
+### plots: 2 (FOR, n=1); 9 (FOR, n=2)
+n_postbiomol <- length(sam_hala$sample_id) %>% print()
 
-## after clean_pq (empty samples):
-### 2 (n=1); 9 (n=2); 3 (n=3); 8 (n=1) -> N= 7 
-length(ecm_phy@sam_data$sample_id) # N= 7 missing after bioinformatic analysis 
-# result: 3 (n=3); 8 (n=1) 
 
-table(phy_12@sam_data$plot, phy_12@sam_data$treatment)
-table(phy_18@sam_data$plot, phy_18@sam_data$treatment)
+# post bioinf design
+table_postbioinf <- table(ecm_phy@sam_data$treatment, ecm_phy@sam_data$plot) %>% print()# post bioinf
+rowSums(table_postbioinf) ## after clean_pq (empty samples):
+## 2 (n=1); 9 (n=2); 3 (n=3); 8 (n=1) -> N= 4 
+n_postbionf <- length(ecm_phy@sam_data$sample_id) %>% print() # N = 4 "0 samples" after bioinformatic analysis 
+### plots: 3 (CC, n=3); 8 (FOR, n=1) 
 
-summary(ecm_phy@sam_data$treatment_edge)
-summary(as.factor(phy@sam_data$treatment_edge))
+## --> total missing : 3 + 4 = 7 (64 - 7 = 57)
+
+# design table
+summary(as.factor(sam$treatment)) 
+summary(as.factor(ecm_phy@sam_data$treatment_edge))
+
+tableall <- table(ecm_phy@sam_data$treatment_edge, ecm_phy@sam_data$plot) %>% print() %>% as.data.frame.matrix()
+table12 <- table(ecm_12@sam_data$treatment_edge, ecm_12@sam_data$plot) %>% print() %>% as.data.frame.matrix()
+table18 <- table(ecm_18@sam_data$treatment_edge, ecm_18@sam_data$plot) %>% print() %>% as.data.frame.matrix()
+
+table12_missing <- ifelse(table12 == 1, 1, 0) %>% as.data.frame()
+table18_missing <- ifelse(table18 == 1, 1, 0) %>% as.data.frame()
+table18_missing["CC_MID", "3"] <- 2 # check manual 
+print(table12_missing) # missing samples from biomol
+print(table18_missing) # zero samples
+
+sum(table12)+sum(table18) # verif ok
+rowSums(tableall)
+rowSums(table12)
+rowSums(table18)
+rowSums(table12_missing)
+rowSums(table18_missing)
+
 
 # nb genus
 colnames(ecm_phy@tax_table)
 as.factor(ecm_phy@tax_table[,5]) %>% droplevels() %>% levels() 
 genus_nb_hala <- as.factor(ecm_phy@tax_table[,5]) %>% droplevels() %>% levels() %>% length()
-## 23 genus
+## 27 genus
 ## attribution facolors, or whatever to have proper constrasted colors on graphicals representations
 
 ##### checking cluster nb etc
@@ -657,6 +679,40 @@ max_hala <- tapply(df_div_hala$div_hala,df_div_hala$treatment_edge, max)
 
 boxplot(div_hala ~ ecm_phy@sam_data$treatment_edge)
 boxplot(rich_hala ~ ecm_phy@sam_data$treatment_edge) # same as hill0 (down) -> good
+
+# violin plot + jitter
+
+bxplt_1 <- df_div_hala %>% ggplot(aes(x = treatment_edge, y = rich_hala, fill =  treatment_edge))+
+  geom_boxplot() +
+  geom_jitter() +
+  facet_grid(~ year) +
+  theme(legend.position="none", plot.title = element_text(size=11)) +
+  ggtitle("Richness in OTU for cutting position") +
+  xlab("Position from cutting")+
+  scale_fill_manual(values = coltreatment)
+bxplt_1
+
+summary(as.factor(df_div_hala$treatment_edge))
+
+labs.data <- paste(gsub("/","-\n",row.names(table(data$Variable2,data$Variable3)),fixed=T),"\n(N=",table(data$Variable2,data$Variable3),")",sep="")
+
+ggplot(data, aes(x=Variable2, y=Variable1, color=Variable2,fill= Variable2)) +
+geom_point(position=position_jitter(width=0.15), alpha=0.8,size=1.5) + ylim(0,150) +
+geom_boxplot(fill=NA, outlier.size=NA,lwd=1) + guides(fill=FALSE) + scale_x_discrete(labels=labs.data) +
+ylab("Variable1") + geom_violin(alpha=0.3,trim=FALSE) + facet_grid(. ~ Variable3,scales = "free_x", space="free_x") + theme_light() +
+theme(legend.position="none") + theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank()) + theme(axis.title.x=element_blank())
+
+data %>%
+  ggplot( aes(x=name, y=value, fill=name)) +
+    geom_boxplot() +
+    scale_fill_viridis(discrete = TRUE) +
+    theme_ipsum() +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    ggtitle("A somewhat misleading boxplot") +
+    xlab("")
 
 # model all
 colnames(df_div_hala)
@@ -732,10 +788,10 @@ hala_rrcurve_groups1 <- phyloseq.extended::ggrare(yr_12, step = 10, color = "tre
        color = "Treatment")+
   guides(fill = F)+ # Suppressing the filling (standard error) legend 
   scale_color_manual(values = c("CC_EDG" = "orange",
-                                "CC_MID" = "red",
+                                "CC_MID" = "darkred",
                                 "FOR" = "darkgreen"))+
   scale_fill_manual(values = c("CC_EDG" = "orange",
-                                "CC_MID" = "red",
+                                "CC_MID" = "darkred",
                                 "FOR" = "darkgreen"))
 hala_rrcurve_groups1
 
@@ -747,10 +803,10 @@ hala_rrcurve_groups2 <- phyloseq.extended::ggrare(yr_18, step = 10, color = "tre
        color = "Treatment")+
   guides(fill = F)+ # Suppressing the filling (standard error) legend 
   scale_color_manual(values = c("CC_EDG" = "orange",
-                                "CC_MID" = "red",
+                                "CC_MID" = "darkred",
                                 "FOR" = "darkgreen"))+
   scale_fill_manual(values = c("CC_EDG" = "orange",
-                                "CC_MID" = "red",
+                                "CC_MID" = "darkred",
                                 "FOR" = "darkgreen"))
 hala_rrcurve_groups2
 
@@ -768,7 +824,7 @@ circle_pq(physeq = ecm_phy,
                               taxa = "Genus", 
                               min_prop_mod=0.001,
                               min_prop_tax=0.01,
-                              row_col = c("CC_MID" = "red",
+                              row_col = c("CC_MID" = "darkred",
                                           "CC_EDG" = "orange",
                                           "FOR" = "darkgreen"),
                               grid_col= 1,
@@ -789,7 +845,7 @@ hala_hill0 <- hala_hill_treatment[[1]]+
   scale_x_continuous(name="Hill_0", breaks=seq(0,16,by=2))+
   scale_y_continuous(name="Position from CC", breaks=c(1,2,3))+
   scale_color_manual(values = c("CC_EDG" = "orange",
-                                "CC_MID" = "red",
+                                "CC_MID" = "darkred",
                                 "FOR" = "darkgreen"))+
   theme(axis.text.x=element_text(color="coral4", size=8, angle=0))
 hala_hill0
@@ -800,7 +856,7 @@ hala_hill1 <- hala_hill_treatment[[2]]+
   scale_x_continuous(name="Hill_1", breaks=seq(0,12,by=2))+
   scale_y_continuous(name="Position from CC", breaks=c(1,2,3))+
   scale_color_manual(values = c("CC_EDG" = "orange",
-                                "CC_MID" = "red",
+                                "CC_MID" = "darkred",
                                 "FOR" = "darkgreen"))+
   theme(axis.text.x=element_text(color="coral4", size=8, angle=0))
 hala_hill1
@@ -811,7 +867,7 @@ hala_hill2 <- hala_hill_treatment[[3]]+
   scale_x_continuous(name="Hill_2", breaks=seq(0,10,by=2))+
   scale_y_continuous(name="Position from CC", breaks=c(1,2,3))+
   scale_color_manual(values = c("CC_EDG" = "orange",
-                                "CC_MID" = "red",
+                                "CC_MID" = "darkred",
                                 "FOR" = "darkgreen"))+
   theme(axis.text.x=element_text(color="coral4", size=8, angle=0))
 hala_hill2
@@ -904,7 +960,7 @@ ecm_phy_ordi_mdsjacc <- plot_ordination(ecm_phy, ecm_phy_ordi_mdsjacc, type="sam
   facet_wrap(~year)+
   # color and elipse
   scale_color_manual(values = c("CC_EDG" = "orange",
-                              "CC_MID" = "red",
+                              "CC_MID" = "darkred",
                               "FOR" = "darkgreen"))+
   stat_ellipse(type="t", level=0.70)+
   # legend
@@ -918,7 +974,7 @@ ecm_phy_ordi_mdsbray <- plot_ordination(ecm_phy, ecm_phy_ordi_mdsbray, type="sam
   facet_wrap(~year)+
   # color and elipse
   scale_color_manual(values = c("CC_EDG" = "orange",
-                              "CC_MID" = "red",
+                              "CC_MID" = "darkred",
                               "FOR" = "darkgreen"))+
   stat_ellipse(type="t", level=0.70)+
   # legend
@@ -947,7 +1003,7 @@ ecm_phy_ordi_mdsjacc <- plot_ordination(ecm_phy, hala_ordi_specvalues_mdsjacc, t
   scale_color_manual(values = c("N" = "lightblue",
                               "S" = "lightpink",
                               "UP" = "darkblue",
-                              "LO" = "darkred"))+
+                              "LO" = "darkdarkred"))+
   stat_ellipse(type="t", level=0.70)+
   # legend
   guides(color=guide_legend(title="position from CC"))+
@@ -978,10 +1034,10 @@ hala5_rrcurve0 <- phyloseq.extended::ggrare(hala5_grp, step = 10, color = "treat
   guides(fill = F)+ # Suppressing the filling (standard error) legend 
   scale_color_manual(values = c("forest" = "darkgreen",
                                 "thinned" = "orange",
-                                "clearcut" = "red"))+
+                                "clearcut" = "darkred"))+
   scale_fill_manual(values = c("forest" = "darkgreen",
                                 "thinned" = "orange",
-                                "clearcut" = "red"))
+                                "clearcut" = "darkred"))
 hala5_rrcurve0
 ```
 ```{r circle graph: genus distribution among treatments}
@@ -990,7 +1046,7 @@ circle_pq(physeq = hala5_ecm,
                               taxa = "Genus", 
                               min_prop_mod=0.001,
                               min_prop_tax=0.01,
-                              row_col = c("clearcut" = "red",
+                              row_col = c("clearcut" = "darkred",
                                           "forest" ="darkgreen",
                                           "thinned" = "orange"),
                               grid_col= 1,
@@ -1045,7 +1101,7 @@ hala5_hill0 <- hala5_hill_treatment[[1]]+
   scale_y_continuous(name="treatment", breaks=c(1,2,3))+
   scale_color_manual(values = c("forest" = "darkgreen",
                                 "thinned" = "orange",
-                                "clearcut" = "red"))+
+                                "clearcut" = "darkred"))+
   theme(axis.text.x=element_text(color="coral4", size=8, angle=0))
 hala5_hill0
 
@@ -1056,7 +1112,7 @@ hala5_hill1 <- hala5_hill_treatment[[2]]+
   scale_y_continuous(name="treatment", breaks=c(1,2,3))+
   scale_color_manual(values = c("forest" = "darkgreen",
                                 "thinned" = "orange",
-                                "clearcut" = "red"))+
+                                "clearcut" = "darkred"))+
   theme(axis.text.x=element_text(color="coral4", size=8, angle=0))
 
 hala5_hill2 <- hala5_hill_treatment[[3]]+ 
@@ -1066,7 +1122,7 @@ hala5_hill2 <- hala5_hill_treatment[[3]]+
   scale_y_continuous(name="treatment", breaks=c(1,2,3))+
   scale_color_manual(values = c("forest" = "darkgreen",
                                 "thinned" = "orange",
-                                "clearcut" = "red"))+
+                                "clearcut" = "darkred"))+
   theme(axis.text.x=element_text(color="coral4", size=8, angle=0))
 
 hala5_hill_treatment[[4]]
@@ -1079,7 +1135,7 @@ hala5_ecm_ordi_mdsjacc  <- ordinate(hala5_ecm, method = "MDS", dist="bray")
 hala5_ecm_ordi_mdsjacc  <- plot_ordination(hala5_ecm, hala5_ecm_ordi_mdsjacc, type="samples", color="treatment",label="sample_id")+
   geom_point(size=2)+
   # color and elipse
-  scale_color_manual(values = c("clearcut" = "red",
+  scale_color_manual(values = c("clearcut" = "darkred",
                                 "thinned" = "orange",
                                 "forest" = "darkgreen"))+
   stat_ellipse(type="t", level=0.70)+
@@ -1092,7 +1148,7 @@ hala5_ecm_ordi_mdsbray  <- ordinate(as_binary_otu_table(hala5_ecm), method = "MD
 hala5_ecm_ordi_mdsbray  <-plot_ordination(hala5_ecm, hala5_ecm_ordi_mdsbray , type="samples", color="treatment",label="sample_id")+
   geom_point(size=2)+
   # color and elipse
-    scale_color_manual(values = c("clearcut" = "red",
+    scale_color_manual(values = c("clearcut" = "darkred",
                                 "thinned" = "orange",
                                 "forest" = "darkgreen"))+
   stat_ellipse(type="t", level=0.70)+
@@ -1104,7 +1160,7 @@ hala5_ecm_ordi1 <- ordinate(as_binary_otu_table(hala5_ecm), method = "NMDS", dis
 plot_ordination(hala5_ecm, hala5_ecm_ordi1, type="samples", color="treatment",label="sample_id")+
   geom_point(size=2)+
   # color and elipse
-    scale_color_manual(values = c("clearcut" = "red",
+    scale_color_manual(values = c("clearcut" = "darkred",
                                 "thinned" = "orange",
                                 "forest" = "darkgreen"))+
   stat_ellipse(type="t", level=0.70)+
@@ -1146,11 +1202,11 @@ fanga_rrcurve0 <- phyloseq.extended::ggrare(fanga_grp_12, step = 10, color = "tr
        title = "rarefaction curves by treatment",
        color = "Treatment")+
   guides(fill = F)+ # Suppressing the filling (standard error) legend 
-  scale_color_manual(values = c("clearcut" = "red",
+  scale_color_manual(values = c("clearcut" = "darkred",
                                 "forest" = "darkgreen",
                                 "thinned_burn" = "grey4",
                                 "thinned_no_burn" = "orange"))+
-  scale_fill_manual(values = c("clearcut" = "red",
+  scale_fill_manual(values = c("clearcut" = "darkred",
                                 "forest" = "darkgreen",
                                 "thinned_burn" = "grey4",
                                 "thinned_no_burn" = "orange"))
@@ -1162,11 +1218,11 @@ fanga_rrcurve1 <- phyloseq.extended::ggrare(fanga_grp_18, step = 10, color = "tr
        title = "rarefaction curves by treatment",
        color = "Treatment")+
   guides(fill = F)+ # Suppressing the filling (standard error) legend 
-  scale_color_manual(values = c("clearcut" = "red",
+  scale_color_manual(values = c("clearcut" = "darkred",
                                 "forest" = "darkgreen",
                                 "thinned_burn" = "grey4",
                                 "thinned_no_burn" = "orange"))+
-  scale_fill_manual(values = c("clearcut" = "red",
+  scale_fill_manual(values = c("clearcut" = "darkred",
                                 "forest" = "darkgreen",
                                 "thinned_burn" = "grey4",
                                 "thinned_no_burn" = "orange"))
@@ -1178,7 +1234,7 @@ circle_fanga_ecm <- circle_pq(physeq = fanga_ecm,
                               taxa = "Genus", 
                               min_prop_mod=0.001,
                               min_prop_tax=0.02,
-                              row_col = c("clearcut" = "red",
+                              row_col = c("clearcut" = "darkred",
                                 "forest" = "darkgreen",
                                 "thinned_burn" = "grey4",
                                 "thinned_no_burn" = "orange"),
@@ -1242,7 +1298,7 @@ fanga_hill0 <- fanga_hill_treatment[[1]]+
   coord_cartesian(xlim=c(0,16))+
   scale_x_continuous(name="Hill_0", breaks=seq(0,16,by=2))+
   scale_y_continuous(name="treatment", breaks=c(1,2,3))+
-  scale_color_manual(values = c("clearcut" = "red",
+  scale_color_manual(values = c("clearcut" = "darkred",
                                 "forest" = "darkgreen",
                                 "thinned_burn" = "grey4",
                                 "thinned_no_burn" = "orange"))+
@@ -1254,7 +1310,7 @@ fanga_hill1 <- fanga_hill_treatment[[2]]+
   coord_cartesian(xlim=c(0,12))+
   scale_x_continuous(name="Hill_1", breaks=seq(0,12,by=2))+
   scale_y_continuous(name="treatment", breaks=c(1,2,3))+
-  scale_color_manual(values = c("clearcut" = "red",
+  scale_color_manual(values = c("clearcut" = "darkred",
                                 "forest" = "darkgreen",
                                 "thinned_burn" = "grey4",
                                 "thinned_no_burn" = "orange"))+
@@ -1265,7 +1321,7 @@ fanga_hill2 <- fanga_hill_treatment[[3]]+
   coord_cartesian(xlim=c(0,10))+
   scale_x_continuous(name="Hill_2", breaks=seq(0,10,by=2))+
   scale_y_continuous(name="treatment", breaks=c(1,2,3))+  
-  scale_color_manual(values = c("clearcut" = "red",
+  scale_color_manual(values = c("clearcut" = "darkred",
                                 "forest" = "darkgreen",
                                 "thinned_burn" = "grey4",
                                 "thinned_no_burn" = "orange"))+
@@ -1310,7 +1366,7 @@ fanga_ecm_ordi_mdsjacc <- plot_ordination(fanga_ecm, fanga_ecm_ordi_mdsjacc, typ
   geom_point(size=2)+
   facet_wrap(~year)+
   # color and elipse
-  scale_color_manual(values = c("clearcut" = "red",
+  scale_color_manual(values = c("clearcut" = "darkred",
                               "forest" = "darkgreen",
                               "thinned_burn" = "grey4",
                               "thinned_no_burn" = "orange"))+
@@ -1325,7 +1381,7 @@ fanga_ecm_ordi_mdsbray <- plot_ordination(fanga_ecm, fanga_ecm_ordi_mdsbray, typ
   geom_point(size=2)+
   facet_wrap(~year)+
   # color and elipse
-  scale_color_manual(values = c("clearcut" = "red",
+  scale_color_manual(values = c("clearcut" = "darkred",
                               "forest" = "darkgreen",
                               "thinned_burn" = "grey4",
                               "thinned_no_burn" = "orange"))+
@@ -1352,7 +1408,7 @@ print(miss_sam_clust_fanga)
 ```{r overview sites}
 circle_pq(ecm_phy, "site", taxa = "Phylum", add_nb_seq = F,
           grid_col = "darkgrey",
-          row_col = c("darkred","#1F78B4","darkgreen"))
+          row_col = c("darkdarkred","#1F78B4","darkgreen"))
 
 read_distrib # density plot of nb of reads per site 
 hist_cluster_size # distribution of the cluster size among ECM OTUs
@@ -1375,7 +1431,7 @@ circle_pq(physeq = ecm_phy,
                               min_prop_mod=0.001,
                               min_prop_tax=0.01,
                               row_col = c("CC_EDG" = "orange",
-                              "CC_MID" = "red",
+                              "CC_MID" = "darkred",
                               "FOR" = "darkgreen"),
                               grid_col= 1,
                               add_nb_seq = T) # distribution circle sample - taxonomy 
@@ -1409,7 +1465,7 @@ circle_fanga_ecm <- circle_pq(physeq = fanga_ecm,
                               taxa = "Genus", 
                               min_prop_mod=0.001,
                               min_prop_tax=0.02,
-                              row_col = c("clearcut" = "red",
+                              row_col = c("clearcut" = "darkred",
                                 "forest" = "darkgreen",
                                 "thinned_burn" = "grey4",
                                 "thinned_no_burn" = "orange"),
@@ -1452,7 +1508,7 @@ circle_pq(physeq = hala5_ecm,
                               taxa = "Genus", 
                               min_prop_mod=0.001,
                               min_prop_tax=0.01,
-                              row_col = c("clearcut" = "red",
+                              row_col = c("clearcut" = "darkred",
                                           "forest" ="darkgreen",
                                           "thinned" = "orange"),
                               grid_col= 1,
