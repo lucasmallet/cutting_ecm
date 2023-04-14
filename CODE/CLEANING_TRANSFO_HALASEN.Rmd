@@ -28,6 +28,8 @@ library(reshape2)
 library(data.table)
 library(viridis) # palettes and themes
 library(hrbrthemes) # palettes and themes
+library(emmeans) # tukey test for GLM
+library(ISLR) # McFadden’s R-Squared for GLM
 ```
 ```{r color palette}
 pals::pal.bands(alphabet, alphabet2, cols25, glasbey, kelly, polychrome, 
@@ -46,6 +48,10 @@ outersect <- function(x, y) {
 } # extract uncommon values between x - y 
 
 stde <- function (x) {sqrt(var(x))/length(x)}
+
+give.n <- function(x){
+   return(c(y = mean(x), label = length(x)))
+}
 ```
 ```{r dummy calc}
 # hellinger : sum of reads per sample = 1 ? (as same as relative abundance ?)
@@ -177,25 +183,37 @@ otu <- otu_all %>%
 nrow(otu)
 ncol(otu)
 
-# controls and samples with 0 exclusion 
-not_samples_kept <- c("sITS-standard2", "sITS-standard1", "sPCR_neg_1", "sPCR_neg_2", "sQ2", "s49", "s97") # cf MM_RESULTS.Rmd ```{r DESIGN SAMPLES}  to understand how they are found 
+# controls
+not_samples_kept <- c("sITS-standard2", "sITS-standard1", "sPCR_neg_1", "sPCR_neg_2", "sQ2") # cf MM_RESULTS.Rmd ```{r DESIGN SAMPLES}  to understand how they are found 
+# samples with 0:  "s49", "s97"
 
 samples_kept_pq <- otu[, colnames(otu) %in% not_samples_kept] 
 clusters_in_controls <- which(samples_kept_pq >0, arr.ind = T) %>% 
   rownames() %>% as.factor() %>% levels() %>% print() # 13 clusters found in controls samples
 otu_samples_out <- otu[, !(colnames(otu) %in% not_samples_kept)] # suppressing these samples from otu matrix
 ncol(otu_samples_out)
+nrow(otu_samples_out)
 
 # excluding NF clusters to rarefy only with fungi
 otu_fungi <- otu_samples_out %>%
   filter(rownames(otu_samples_out) %in% rownames(taxeco)) # taxeco has only fungi clusters
+ncol(otu_fungi)
+nrow(otu_fungi)
 
 # creating otu_fungi_hala only for hala to rarefy on the unique same site
-otu_fungi_t <- t(otu_fungi) %>% as.data.frame()
-otu_fungi_t <- otu_fungi_t %>%
-  filter(rownames(otu_fungi_t) %in% rownames(sam_hala)) 
+otu_fungi_t0 <- t(otu_fungi) %>% as.data.frame()
+otu_fungi_t <- otu_fungi_t0 %>%
+  filter(rownames(otu_fungi_t0) %in% rownames(sam_hala)) 
 otu_fungi <- t(otu_fungi_t) # transposing back
+ncol(otu_fungi)
 nrow(otu_fungi) # 3493 - 3411 = 82 clusters suppressed
+
+sam_hala[which(rownames(sam_hala) %in% rownames(otu_fungi_t0) == FALSE), ]
+##
+
+clusters_in_controls <- which(samples_kept_pq >0, arr.ind = T) %>% 
+  rownames() %>% as.factor() %>% levels() %>% print() 
+
 
 # transfo into matrix
 otu1 <- matrix(as.numeric(unlist(otu_fungi)),
@@ -299,7 +317,7 @@ sam_phy <- sample_data(sam)
 
 # general physeq object
 physeq <- phyloseq(otu_phy_rarefied,taxeco_phy,sam_phy) %>% 
-clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
+clean_pq(remove_empty_samples = FALSE,remove_empty_taxa = T, clean_samples_names = T)
 physeq_rarefied <- physeq
 physeq_notrarefied <- phyloseq(otu_phy_notrarefied,taxeco_phy,sam_phy) %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
 # 2822 taxa removed from the <1% relative abundance suppresion. 
@@ -387,7 +405,7 @@ phy <- physeq
 
 ```{r}
 ecm_phy <- subset_taxa(physeq, primary_lifestyle == "ectomycorrhizal") %>% 
-clean_pq(remove_empty_samples = T, remove_empty_taxa = T, clean_samples_names = F)
+clean_pq(remove_empty_samples = FALSE, remove_empty_taxa = T, clean_samples_names = F)
 sapr_phy <- subset_taxa(physeq, primary_lifestyle == "saprotroph") %>% 
 clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = F)
 other_phy <- subset_taxa(physeq, (primary_lifestyle == "other_lifestyle" | is.na(primary_lifestyle)))  %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = F)
@@ -426,3 +444,10 @@ ecm_phy_t <- phyloseq(ecm_phy_otu_t, ecm_phy@sam_data, ecm_phy@tax_table)
 yr_12 <- merge_group(ecm_12, group = "treatment_edge",)
 yr_18 <- merge_group(ecm_18, group = "treatment_edge",)
 ```
+
+```{r merging samplings}
+
+
+
+```
+

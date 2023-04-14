@@ -535,6 +535,16 @@ ggplot(r_sps_df, aes(x = sum_reads, color = pool, fill = pool)) +
 boxplot(r_sps ~ physeq_001kept@sam_data$pool)
 boxplot(r_sps ~ physeq_001kept@sam_data$plot)
 
+
+rd_sps_inf1_gg <- reshape2::melt(rd_sps_inf1[,2:3])
+ggplot(rd_sps_inf1_gg, aes(x = value, color = variable, fill = variable))+
+  geom_histogram(aes(y = ..count..), alpha = 0.4, position = "identity")+
+  geom_density(alpha = 0.3)+
+  scale_y_continuous(name = "nb of samples")+
+  scale_x_continuous(name = "read sum per sample", breaks = seq(0,3000 ,by = 200))+
+  ggtitle("Number of samples per read sum")+
+  geom_vline(xintercept = c(mean(rd_sps_inf1$sumreads_otu1), mean(rd_sps_inf1$sumreads_otu_001)),lwd = 0.6,colour = c("red","blue"))
+
 # statistical test
 lm_seq_depth <- lmer(sum_reads ~ pool + (pool | plot) + (pool | year), r_sps_df)
 qqnorm(residuals(lm_seq_depth))
@@ -592,10 +602,20 @@ n_postbiomol <- length(sam_hala$sample_id) %>% print()
 
 # post bioinf design
 table_postbioinf <- table(ecm_phy@sam_data$treatment, ecm_phy@sam_data$plot) %>% print()# post bioinf
-rowSums(table_postbioinf) ## after clean_pq (empty samples):
+rowSums(table_postbioinf) ## after clean_pq 
 ## 2 (n=1); 9 (n=2); 3 (n=3); 8 (n=1) -> N= 4 
-n_postbionf <- length(ecm_phy@sam_data$sample_id) %>% print() # N = 4 "0 samples" after bioinformatic analysis 
-### plots: 3 (CC, n=3); 8 (FOR, n=1) 
+n_postbionf <- length(ecm_phy@sam_data$sample_id) %>% print()
+
+# not present in otu_table:
+sam_hala[which(rownames(sam_hala) %in% rownames(otu_fungi_t0) == FALSE), ]
+sam_hala$sample_id[which(rownames(sam_hala) %in% rownames(otu_fungi_t0) == FALSE)] %>% print()
+## samples missing from otu table (during clustering scata)
+### is this a pb in tag matching ? 
+
+# 0 ECM sample: 
+which(colSums(ecm_phy@otu_table) == 0) 
+ecm_phy@sam_data[which(colSums(ecm_phy@otu_table) == 0)]
+## sample with 0 ECM read 
 
 ## --> total missing : 3 + 4 = 7 (64 - 7 = 57)
 
@@ -619,7 +639,6 @@ rowSums(table12)
 rowSums(table18)
 rowSums(table12_missing)
 rowSums(table18_missing)
-
 
 # nb genus
 colnames(ecm_phy@tax_table)
@@ -664,101 +683,160 @@ hist(colSums(ecm_phy@otu_table))
 ## 3.1 stat test
 ```{r EDGE - NORTH & UPPER LOWER }
 # creating diversity variables
-div_hala <- vegan::diversity(x = t(ecm_phy@otu_table),
+div <- vegan::diversity(x = t(ecm_phy@otu_table),
                              index = "shannon")
-rich_hala <- vegan::specnumber(x= t(ecm_phy@otu_table))
-summary(rich_hala)
-summary(div_hala)
+rich <- vegan::specnumber(x= t(ecm_phy@otu_table))
+summary(rich)
+summary(div)
 
-df_div_hala <- data.frame(ecm_phy@sam_data, div_hala, rich_hala)
+df_div <- data.frame(ecm_phy@sam_data, div, rich)
+colnames(df_div)
+df_div[, c(3:12)] <- lapply(df_div[, c(3:12)], as.factor) 
+str(df_div)
 
-stde_hala <- tapply(df_div_hala$div_hala, df_div_hala$treatment_edge, stde) # if needed for tables
-median_hala <- tapply(df_div_hala$div_hala,df_div_hala$treatment_edge, median)
-min_hala <- tapply(df_div_hala$div_hala,df_div_hala$treatment_edge, min)
-max_hala <- tapply(df_div_hala$div_hala,df_div_hala$treatment_edge, max)
+stde_ <- tapply(df_div$div, df_div$treatment_edge, stde) # if needed for tables
+median_ <- tapply(df_div$div,df_div$treatment_edge, median)
+min_ <- tapply(df_div$div,df_div$treatment_edge, min)
+max_ <- tapply(df_div$div,df_div$treatment_edge, max)
 
-boxplot(div_hala ~ ecm_phy@sam_data$treatment_edge)
-boxplot(rich_hala ~ ecm_phy@sam_data$treatment_edge) # same as hill0 (down) -> good
+boxplot(div ~ ecm_phy@sam_data$treatment_edge)
+boxplot(rich ~ ecm_phy@sam_data$treatment_edge) # same as hill0 (down) -> good
 
-# violin plot + jitter
-
-bxplt_1 <- df_div_hala %>% ggplot(aes(x = treatment_edge, y = rich_hala, fill =  treatment_edge))+
-  geom_boxplot() +
-  geom_jitter() +
+bxplt_rich <- df_div %>%
+  ggplot(aes(x = treatment_edge, y = rich, fill =  treatment_edge))+
+  geom_violin(width = 1, color = "black", alpha = 0.7) +
+  geom_boxplot(width = 0.2, color = "black") +
+  coord_cartesian(ylim=c(0,15))+
+  scale_y_continuous(name = "OTU number", breaks=seq(0, 15, by = 2))+
+  theme(axis.text.x=element_text(color="coral4", size = 11, angle = 0))+
   facet_grid(~ year) +
-  theme(legend.position="none", plot.title = element_text(size=11)) +
-  ggtitle("Richness in OTU for cutting position") +
+  theme(legend.position="none", plot.title = element_text(size = 14)) +
+  labs(title = "Richness in OTU by cutting position")+
   xlab("Position from cutting")+
-  scale_fill_manual(values = coltreatment)
-bxplt_1
+  scale_fill_manual(values = coltreatment)+
+  stat_summary(fun.data = give.n, geom = "text", vjust = 2)
+bxplt_rich
+## 
 
-summary(as.factor(df_div_hala$treatment_edge))
+table(df_div$plot, df_div$rich)
 
-labs.data <- paste(gsub("/","-\n",row.names(table(data$Variable2,data$Variable3)),fixed=T),"\n(N=",table(data$Variable2,data$Variable3),")",sep="")
+summary(as.factor(df_div$treatment_edge))
+```
 
-ggplot(data, aes(x=Variable2, y=Variable1, color=Variable2,fill= Variable2)) +
-geom_point(position=position_jitter(width=0.15), alpha=0.8,size=1.5) + ylim(0,150) +
-geom_boxplot(fill=NA, outlier.size=NA,lwd=1) + guides(fill=FALSE) + scale_x_discrete(labels=labs.data) +
-ylab("Variable1") + geom_violin(alpha=0.3,trim=FALSE) + facet_grid(. ~ Variable3,scales = "free_x", space="free_x") + theme_light() +
-theme(legend.position="none") + theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank()) + theme(axis.title.x=element_blank())
+# Variables:
+- treatment_edge : fixed 
+- year : fixed
+- stream: fixed ? random ? 
+- orientation: random ? not considered ? 
+- plot: random 
 
-data %>%
-  ggplot( aes(x=name, y=value, fill=name)) +
-    geom_boxplot() +
-    scale_fill_viridis(discrete = TRUE) +
-    theme_ipsum() +
-    theme(
-      legend.position="none",
-      plot.title = element_text(size=11)
-    ) +
-    ggtitle("A somewhat misleading boxplot") +
-    xlab("")
+# symbols:
++ : include
+- : delete
+: : interaction between variables
+* : variables + their interaction
+| : conditionning = X|Y -> include X given Y 
+1 : intercept (can be deleted)
 
-# model all
-colnames(df_div_hala)
-df_div_hala[, c(3:13)] <- df_div_hala[, c(3:13)] %>% lapply(as.factor) %>% data.frame()
-str(df_div_hala)
+# Random intercept:
+m1 <- lmer(Reaction ~ Days + (1|Subject), data = sleepstudy)
 
-# assumption test for model
-hist(rich_hala) # not normal : poisson distribution lambda = 2 
+# Random slope:
+m2 <- lmer(Reaction ~ Days + (0 + Days|Subject), data = sleepstudy)
 
-glmm_rich_pois <- lme4::glmer(rich_hala ~ specification_value + treatment_edge + (specification_value| plot) + (treatment_edge| plot), 
+# Correlated random intercept and slope:
+m3 <- lmer(Reaction ~ Days + (1 + Days|Subject), data = sleepstudy)
+
+# Uncorrelated random intercept and slope:
+m4 <- lmer(Reaction ~ Days + (1|Subject) + (0 + Days|Subject),
+           data = sleepstudy)
+
+```{r MODEL }
+# https://stats.stackexchange.com/questions/31569/questions-about-how-random-effects-are-specified-in-lmer
+## for constructing model with random effects
+
+## for interaction : 
+## ":" or "*" -> figure which symbol is appropriate
+
+glmm_want <- lme4::glmer(rich ~ treatment_edge * year + stream +
+                           (1 | plot + orient),
+                         family = poisson(link = "log"),
+                         data = df_div)
+
+glmm_richpois <- lme4::glmer(rich ~ treatment_edge * year + (1 | plot), 
                       family = poisson(link = "log"),
-                      data = df_div_hala) # glmm : poisson transformation on richness
+                      data = df_div) # glmm : poisson transformation on richness
 
-lm_rich <- lme4::lmer(rich_hala ~ specification_value + treatment_edge + (specification_value| plot) + (treatment_edge| plot), 
-                      data = df_div_hala) # linear model without transformation
+lm_rich <- lme4::lmer(rich ~ treatment_edge + year + (1 | plot),
+                      data = df_div)
+
+glm <- glm(rich ~ treatment_edge + year, 
+                      family = poisson(link = "log"),
+                      data = df_div)
+
+lm <- lm(rich ~ treatment_edge + year, data = df_div)
+
+summary(glmm_want) # 1
+anova(glmm_want) 
+summary(glmm_richtest) # 2
+anova(glmm_richtest)
+summary(glm) # 3
+anova(glm)
+summary(lm)
+anova(lm)
+
+predict(glm)
+VarCorr(glm)
+
+#calculate McFadden's R-squared for model
+with(summary(glm), 1 - deviance/null.deviance)
+
+# pairwise comparisons
+tuk <- emmeans(glm, "treatment_edge")
+contrast(tuk, "pairwise", adjust = "Tukey")
+
+emmeans(glm, pairwise ~ treatment_edge : year) # possible to do pairwise on interaction
+emmeans(lm, pairwise ~ treatment_edge)
+TukeyHSD(aov(lm))
+
+##
+# assumption test for model
+hist(rich) # not normal : poisson distribution lambda = 2 
+
+boxplot(rich ~ treatment_edge, data = df_div)
 
 par(mfrow=c(1, 3))
-hist(rich_hala) # graphical distrib
+hist(rich_) # graphical distrib
 hist(residuals(glmm_rich_pois))
 hist(residuals(lm_rich))
-shapiro.test(rich_hala) # shapiro tests
+shapiro.test(rich_) # shapiro tests
 shapiro.test(residuals(glmm_rich_pois))
 shapiro.test(residuals(lm_rich))
 
 par(mfrow=c(2, 2))
-plot(glmm_rich)
+plot(glmm_rich_pois)
 qqnorm(residuals(glmm_rich_pois))
 qqline(residuals(glmm_rich_pois))
 
 par(mfrow=c(1,1))
 
-shapiro.test(lm_div$res) # OK
-dwtest(lm_div)  # OK
-bptest(lm_div)  # OK
-Anova(lm_div, type="II")
-anova(lm_div)
-TukeyHSD(aov(lm_div), "specification_value")
+shapiro.test(lm_rich$res) # OK
+dwtest(lm_rich)  # OK
+bptest(lm_rich)  # OK
+anova(lm_rich)
+summary(lm_rich)
+TukeyHSD(aov(lm_rich), "specification_value")
 
 summary(glmm_rich_pois)
 
 
-boxplot(rich_hala ~ ecm_phy@sam_data$specification_value)
+boxplot(rich_ ~ ecm_phy@sam_data$specification_value)
 
 # model all addition ## TO RESOLVE AND CHOOSE
-str(df_div_hala)
-lm_div <- lm(rich_hala ~ orient + stream, data = df_div_hala) 
+str(df_div)
+
+lm_div <- lm(rich_ ~ orient + stream, data = df_div) 
+
 par(mfrow=c(2,2))
 plot(lm_div)
 par(mfrow=c(1,1))
@@ -771,10 +849,6 @@ anova(lm_div)
 TukeyHSD(aov(lm_div), "specification_value")
 
 boxplot(rich_hala ~ ecm_phy@sam_data$specification_value)
-```
-```{r TREATMENT}
-# fixed variables : treatment + year
-# random variables: plot ()
 ```
 
 
@@ -793,6 +867,7 @@ hala_rrcurve_groups1 <- phyloseq.extended::ggrare(yr_12, step = 10, color = "tre
   scale_fill_manual(values = c("CC_EDG" = "orange",
                                 "CC_MID" = "darkred",
                                 "FOR" = "darkgreen"))
+
 hala_rrcurve_groups1
 
 hala_rrcurve_groups2 <- phyloseq.extended::ggrare(yr_18, step = 10, color = "treatment_edge",plot=F, se=T)+ 
