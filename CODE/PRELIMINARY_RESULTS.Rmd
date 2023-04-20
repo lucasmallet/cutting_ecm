@@ -660,10 +660,12 @@ str(ecmtax_df)
 summary_ecm <- summary(ecmtax_df) %>% print()
 summary_ecm_df <- data.frame(unclass(summary(ecmtax_df)), check.names = FALSE, stringsAsFactors = FALSE)
 
-ecmtax_df[, c("Phylum", "Class", "Family", "Genus", "Fruitbody_type_template")] %>%
+level_order_ecmtax <- c("Phylum", "Class", "Family", "Genus", "Fruitbody")
+
+ecmtax_df[, c("Phylum", "Class", "Genus", "Family", "Fruitbody")] %>%
   gather(variable, value) %>%
   ggplot()+
-  geom_bar(aes(x = variable, y = ..count../sum(..count..)*5, fill = value), color= " black", position = "stack", show.legend = FALSE)+
+  geom_bar(aes(x = factor(variable, levels = level_order_ecmtax), y = ..count../sum(..count..)*5, fill = value), color= " black", position = "stack", show.legend = FALSE)+
   geom_text(stat = "count", aes(x = variable, label =  value,  y = ..count../sum(..count..)*5, group = value), position = "stack", vjust = 1, alpha = 1)+
   scale_y_continuous(labels = scales::percent)+
   ylab("") # 5 because of the nb of variables
@@ -676,6 +678,25 @@ colSums(ecm_phy@otu_table) %>% summary()
 colSums(phy@otu_table) %>% summary 
 
 hist(colSums(ecm_phy@otu_table))
+```
+
+```{r test piechart}
+fortax <- data.frame(table(as.factor(ecm_phy@tax_table[,"Order"])))
+
+fortax <- fortax %>% 
+  group_by(Var1) %>% # Variable to be transformed
+  count() %>% 
+  ungroup() %>% 
+  mutate(perc = `Freq` / sum(`Freq`)) %>% 
+  arrange(perc) %>%
+  mutate(labels = scales::percent(perc))
+
+ggplot(fortax, aes(x ="", y = Freq, fill = Var1)) +
+  geom_bar(stat="identity", width=1) +
+  coord_polar("y", start=0)+
+  geom_text(aes(label = labels),
+            position = position_stack(vjust = 0.5))
+  
 ```
 
 - change between 2012 2018 (see below) -> could be explained by a difference in the biomolecular methods ? we should not expect any difference in forest control treatment between years
@@ -701,9 +722,12 @@ max_ <- tapply(df_div$div,df_div$treatment_edge, max)
 
 boxplot(div ~ ecm_phy@sam_data$treatment_edge)
 boxplot(rich ~ ecm_phy@sam_data$treatment_edge) # same as hill0 (down) -> good
+boxplot(rich ~ ecm_phy@sam_data$specification_value)
+
+order_level <- c("FOR", "CC_EDG", "CC_MID")
 
 bxplt_rich <- df_div %>%
-  ggplot(aes(x = treatment_edge, y = rich, fill =  treatment_edge))+
+  ggplot(aes(x = factor(treatment_edge, levels = order_level), y = rich, fill =  treatment_edge))+
   geom_violin(width = 1, color = "black", alpha = 0.7) +
   geom_boxplot(width = 0.2, color = "black") +
   coord_cartesian(ylim=c(0,15))+
@@ -721,6 +745,27 @@ bxplt_rich
 table(df_div$plot, df_div$rich)
 
 summary(as.factor(df_div$treatment_edge))
+```
+
+```{r DOWNSTREAM EFFECT }
+cc_stream <- filter(df_div, treatment_edge %in% "CC_MID") %>% arrange(treatment_edge) 
+for_stream <- filter(df_div, treatment_edge %in% "FOR") %>% arrange(treatment_edge) 
+
+bxplt_rich <- df_div %>%
+  ggplot(aes(x = treatment_edge, y = rich, fill =  treatment_edge))+
+  geom_violin(width = 1, color = "black", alpha = 0.7) +
+  geom_boxplot(width = 0.2, color = "black") +
+  coord_cartesian(ylim=c(0,15))+
+  scale_y_continuous(name = "OTU number", breaks=seq(0, 15, by = 2))+
+  theme(axis.text.x=element_text(color="coral4", size = 11, angle = 0))+
+  facet_grid(~ stream) +
+  theme(legend.position="none", plot.title = element_text(size = 14)) +
+  labs(title = "Richness in OTU by cutting position")+
+  xlab("Position from cutting")+
+  scale_fill_manual(values = coltreatment)+
+  stat_summary(fun.data = give.n, geom = "text", vjust = 2)
+bxplt_rich
+
 ```
 
 # Variables:
@@ -758,10 +803,29 @@ m4 <- lmer(Reaction ~ Days + (1|Subject) + (0 + Days|Subject),
 ## for interaction : 
 ## ":" or "*" -> figure which symbol is appropriate
 
-glmm_want <- lme4::glmer(rich ~ treatment_edge * year + stream +
-                           (1 | plot + orient),
+# spatial autocorrelation -> lags ? to consider into glmm. is that also possible to perform glmm if autocorrelation anyways ?
+## using ape package , moran's index 
+# if so, correct 
+
+# not possible to put in random effect a variable that is NA for levels of other variable (eg stream with CC_EDG from treatment)
+
+# verif assumption for glmm
+
+glmm<- lme4::glmer(rich ~ treatment_edge + 
+                           (1 | plot)+
+                           (1 | year),
                          family = poisson(link = "log"),
                          data = df_div)
+
+glmm <- lme4::glmer(rich ~ treatment_edge + 
+                           (1 | plot),
+                         family = poisson(link = "log"),
+                         data = df_div)
+
+glmm<- lme4::glmer(rich ~ treatment_edge * year +
+                           (1 | plot),
+                         family = poisson(link = "log"),
+                         data = df_div) # most complete model, also best
 
 glmm_richpois <- lme4::glmer(rich ~ treatment_edge * year + (1 | plot), 
                       family = poisson(link = "log"),
@@ -770,23 +834,48 @@ glmm_richpois <- lme4::glmer(rich ~ treatment_edge * year + (1 | plot),
 lm_rich <- lme4::lmer(rich ~ treatment_edge + year + (1 | plot),
                       data = df_div)
 
-glm <- glm(rich ~ treatment_edge + year, 
+glm <- glm(rich ~ treatment_edge, 
                       family = poisson(link = "log"),
                       data = df_div)
 
-lm <- lm(rich ~ treatment_edge + year, data = df_div)
+lm <- lm(rich ~ treatment_edge, data = df_div)
 
-summary(glmm_want) # 1
-anova(glmm_want) 
+# analysis of variance (lm) or deviance (glm and glmm)
+summary(glmm) # 1 
+# summary interpretation of fixed effects: 
+## intercept = CC_EDG + 2012 + CC_EDG:2012, necessarily significant because model no null (0)
+## CC_MID and FOR are S=/= of CC_EDG independently of year     NB: (S=/= means significantly different)
+## year 2018 is =/= from 2012 independently of treatment
+## CC_MID:2018 (ie in interaction) is =/= from CC_EDG:2012 -> CC_MID and CC_EDG difference do vary through years with an observed "inversment" where richness of the edges decrease through time when richness of middle is increasing.
+## FOR:2018 is =/= from CC_EDG:2012 -> FOR and CC_EDG difference do not vary through years (a global decrease for both of treatments is observed)
+
+# summary interpretation of correlations:
+
+anova(glmm, test = "LR") # order influence significance intercept (CC_EDG select as intercept, alphabetically or 1st row of df.)
 summary(glmm_richtest) # 2
 anova(glmm_richtest)
 summary(glm) # 3
-anova(glm)
+anova(glm, test = "LR") # ou methode des moindres carres, etc. # function # anova (analysis of deviance) is working only for glm, not glmm
 summary(lm)
 anova(lm)
 
-predict(glm)
-VarCorr(glm)
+anova(glm, test = "LR")
+## copied from dataset
+all.ai=manyglm(allotus.ai ~ as.numeric(Reads_mean) + Pair + as.numeric(AI), data=factors[-11,], family="negative.binomial")
+plot(all.ai)
+anova.all.ai=anova(all.ai, test="LR", resamp="perm.resid", p.uni="adjusted")
+
+# TABLE 4b #
+anova.all.ai
+
+which(anova.all.ai$uni.p[2,]<=0.05)
+which(anova.all.ai$uni.p[3,]<=0.05)
+which(anova.all.ai$uni.p[4,]<=0.05)
+##
+
+predict(glmm_want)
+plot(glmm_want) # distribution res 
+VarCorr(glmm_want)
 
 #calculate McFadden's R-squared for model
 with(summary(glm), 1 - deviance/null.deviance)
@@ -807,16 +896,16 @@ boxplot(rich ~ treatment_edge, data = df_div)
 
 par(mfrow=c(1, 3))
 hist(rich_) # graphical distrib
-hist(residuals(glmm_rich_pois))
+hist(residuals(glmm_want))
 hist(residuals(lm_rich))
-shapiro.test(rich_) # shapiro tests
-shapiro.test(residuals(glmm_rich_pois))
+shapiro.test(glmm_want) # shapiro tests
+shapiro.test(residuals(glmm_want))
 shapiro.test(residuals(lm_rich))
 
 par(mfrow=c(2, 2))
 plot(glmm_rich_pois)
-qqnorm(residuals(glmm_rich_pois))
-qqline(residuals(glmm_rich_pois))
+qqnorm(residuals(glmm_want))
+qqline(residuals(glmm_want))
 
 par(mfrow=c(1,1))
 
@@ -854,8 +943,10 @@ boxplot(rich_hala ~ ecm_phy@sam_data$specification_value)
 
 ## 3.2.1 alpha
 ```{r rarecurve}
+# maybe consider the nb of samples (to limit biais in unbalanced design)
+
 hala_rrcurve_groups1 <- phyloseq.extended::ggrare(yr_12, step = 10, color = "treatment_edge",plot=F, se=T)+ 
-  facet_wrap(~year)+
+  facet_wrap(~ year)+
   labs(x = "Group size",
        y =  "OTU richness",
        title = "rarefaction curves by treatment",
@@ -919,8 +1010,8 @@ hala_hill0 <- hala_hill_treatment[[1]]+
   coord_cartesian(xlim=c(0,16))+
   scale_x_continuous(name="Hill_0", breaks=seq(0,16,by=2))+
   scale_y_continuous(name="Position from CC", breaks=c(1,2,3))+
-  scale_color_manual(values = c("CC_EDG" = "orange",
-                                "CC_MID" = "darkred",
+  scale_color_manual(values = c("CC_MID" = "darkred",
+                                "CC_EDG" = "orange",
                                 "FOR" = "darkgreen"))+
   theme(axis.text.x=element_text(color="coral4", size=8, angle=0))
 hala_hill0
@@ -951,11 +1042,13 @@ hala_hill_treatment[[4]]
 hala_hill_treatment[[4]] # TukeyHSD test
 ```
 ```{r barplot genus distribution}
+# tirage aleatoire pour nb d'echantillon (bootstrap ?) to compensate effect of Nforest 
+
 genus_nb_hala <- as.factor(ecm_phy@tax_table[,5]) %>% droplevels() %>% levels() %>% length() %>% print()
 ## OTU Genus count (0;1) by treatment
 ecm_phy_ggplot1 <- phyloseq::plot_bar(as_binary_otu_table(ecm_phy), x = "treatment_edge") 
 
-ecm_phy_ggplot1 <- ggplot(ecm_phy_ggplot1$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment_edge, y = Abundance))+
+ecm_phy_ggplot1 <- ggplot(ecm_phy_ggplot1$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x = factor(treatment_edge, levels = order_level), y = Abundance))+
   geom_bar(stat = "identity", position = "stack") +
   scale_fill_manual(values = funky(genus_nb_hala))+
   facet_grid(~year, scale="free")+
@@ -967,7 +1060,7 @@ ecm_phy_ggplot1
 
 # OTU Genus abundance by treatment
 ecm_phy_ggplot2 <- phyloseq::plot_bar(ecm_phy, x = "treatment_edge") 
-ecm_phy_ggplot2 <- ggplot(ecm_phy_ggplot2$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x=treatment_edge, y = Abundance))+
+ecm_phy_ggplot2 <- ggplot(ecm_phy_ggplot2$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x = factor(treatment_edge, levels = order_level), y = Abundance))+
   geom_bar(stat="identity", position = "stack")+
   scale_fill_manual(values = funky(genus_nb_hala))+
   facet_grid(~year, scale="free")+
@@ -1085,6 +1178,24 @@ ecm_phy_ordi_mdsjacc <- plot_ordination(ecm_phy, hala_ordi_specvalues_mdsjacc, t
   ggtitle(label = "MDS of samples from Halasen_edge by year", subtitle="presence-absence (jaccard distance)")
 ecm_phy_ordi_mdsjacc
 ```
+```{r multivariate models}
+perm <- adonis_pq(ecm_phy, "treatment_edge * year")
+perm
+
+perm_treatment <- adonis_pq(ecm_phy, "treatment_edge")
+perm_treatment
+
+# separating years 
+## best imo 
+perm_12 <- adonis_pq(ecm_12, "treatment_edge")
+perm_12 # SI
+
+perm_18 <- adonis_pq(ecm_18, "treatment_edge")
+perm_18 # NS 
+
+# corroborates what we are observing graphically 
+```
+
 # *4 HALASEN_5P STUDY: randomly distributed retention trees*
 ## 4.1 design and sampling
 ```{r overview }

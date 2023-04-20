@@ -30,6 +30,7 @@ library(viridis) # palettes and themes
 library(hrbrthemes) # palettes and themes
 library(emmeans) # tukey test for GLM
 library(ISLR) # McFadden’s R-Squared for GLM
+library(ape)
 ```
 ```{r color palette}
 pals::pal.bands(alphabet, alphabet2, cols25, glasbey, kelly, polychrome, 
@@ -146,6 +147,8 @@ colnames(taxeco1)
 taxeco <- taxeco1[, c(17:24,1)]
 taxeco <- sapply(taxeco, as.character) 
 rownames(taxeco) <- rownames(taxeco1) # cluster name in row
+colnames(taxeco)
+colnames(taxeco)[8] <- "Fruitbody"
 ```
 
 ```{r sample data}
@@ -437,7 +440,7 @@ phy_sam <- physeq@sam_data
 phy_tax <- physeq@tax_table
 
 ecm_phy_otu_t <- t(ecm_phy@otu_table) %>% otu_table()
-ecm_phy_t <- phyloseq(ecm_phy_otu_t, ecm_phy@sam_data, ecm_phy@tax_table)
+ecm_phy_t <- phyloseq(ecm_phy_otu_t, ecm_phy@sam_data, ecm_phy@tax_table) %>% clean_pq()
 ```
 
 ```{r grouping by factor of insterest}
