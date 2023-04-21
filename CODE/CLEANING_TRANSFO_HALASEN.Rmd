@@ -59,6 +59,13 @@ give.n <- function(x){
 
 #abund1 <- c(sample(0:250, n = 10))
 ```
+```{r objects}
+coltreatment <- c("CC_EDG" = "khaki2",
+                  "CC_MID" = "coral2",
+                  "FOR" = "springgreen4") # palette for treatment
+
+order_level <- c("FOR", "CC_EDG", "CC_MID") # ordination of factors (aes = factor(x, levels = order_level))
+```
 
 *DATA IMPORTATION AND MODIF*
 
@@ -448,9 +455,14 @@ yr_12 <- merge_group(ecm_12, group = "treatment_edge",)
 yr_18 <- merge_group(ecm_18, group = "treatment_edge",)
 ```
 
-```{r merging samplings}
+```{r diversity indexes}
+# creating diversity variables
+div <- vegan::diversity(x = t(ecm_phy@otu_table),
+                             index = "shannon")
+rich <- vegan::specnumber(x= t(ecm_phy@otu_table))
 
-
-
+df_div <- data.frame(ecm_phy@sam_data, div, rich) 
+colnames(df_div)
+df_div[, c(3:12)] <- lapply(df_div[, c(3:12)], as.factor) # tranforming columns into factors
 ```
 
