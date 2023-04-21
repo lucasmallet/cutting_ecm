@@ -28,6 +28,38 @@ BREUSCH PAGAN TEST:
 - Null Hypothesis (H0): Homoscedasticity is present (the residuals are distributed with equal variance)
 - Alternative Hypothesis (HA): Heteroscedasticity is present (the residuals are not distributed with equal variance)
 
+FOR MODEL:
+-- Variables:
+- treatment_edge : fixed 
+- year : fixed
+- stream: fixed ? random ? 
+- orientation: random ? not considered ? 
+- plot: random 
+
+-- symbols:
++ : include
+- : delete
+: : interaction between variables
+* : variables + their interaction
+| : conditionning = X|Y -> include X given Y 
+1 : intercept (can be deleted)
+
+- Random intercept:
+m1 <- lmer(Reaction ~ Days + (1 | Subject), data = sleepstudy)
+
+- Random slope:
+m2 <- lmer(Reaction ~ Days + (0 + Days|Subject), data = sleepstudy)
+
+- Correlated random intercept and slope:
+m3 <- lmer(Reaction ~ Days + (1 + Days|Subject), data = sleepstudy)
+
+- Uncorrelated random intercept and slope:
+m4 <- lmer(Reaction ~ Days + (1|Subject) + (0 + Days|Subject),
+           data = sleepstudy)
+
+https://stats.stackexchange.com/questions/31569/questions-about-how-random-effects-are-specified-in-lmer
+for constructing model with random effects
+
 # *REMAINS TO DO* 
 - deciding about effect of variables (model -> stream + orientation + pool)
 -- find a way to compute samples together if no significance (knowing that if we pool samplings UP-LO N-S together, we need to do it for all of them for comparison)
@@ -694,27 +726,18 @@ hist(colSums(ecm_phy@otu_table))
 - change between 2012 2018 (see below) -> could be explained by a difference in the biomolecular methods ? we should not expect any difference in forest control treatment between years
 
 ## 3.1 stat test TY
-```{r EDGE - NORTH & UPPER LOWER }
+```{r indexes model treatment * year }
 summary(rich)
 summary(div)
 
 str(df_div)
-
-stde_ <- tapply(df_div$div, df_div$treatment_edge, stde) # if needed for tables
-median_ <- tapply(df_div$div,df_div$treatment_edge, median)
-min_ <- tapply(df_div$div,df_div$treatment_edge, min)
-max_ <- tapply(df_div$div,df_div$treatment_edge, max)
-
-boxplot(div ~ ecm_phy@sam_data$treatment_edge)
-boxplot(rich ~ ecm_phy@sam_data$treatment_edge) # same as hill0 (down) -> good
-boxplot(rich ~ ecm_phy@sam_data$specification_value)
 
 bxplt_rich <- df_div %>%
   ggplot(aes(x = factor(treatment_edge, levels = order_level), y = rich, fill =  treatment_edge))+
   geom_violin(width = 1, color = "black", alpha = 0.7) +
   geom_boxplot(width = 0.2, color = "black") +
   coord_cartesian(ylim=c(0,15))+
-  scale_y_continuous(name = "OTU number", breaks=seq(0, 15, by = 2))+
+  scale_y_continuous(name = "OTU number", breaks = seq(0, 15, by = 2))+
   theme(axis.text.x=element_text(color="coral4", size = 11, angle = 0))+
   facet_grid(~ year) +
   theme(legend.position="none", plot.title = element_text(size = 14)) +
@@ -723,61 +746,27 @@ bxplt_rich <- df_div %>%
   scale_fill_manual(values = coltreatment)+
   stat_summary(fun.data = give.n, geom = "text", vjust = 2)
 bxplt_rich
-## 
 
-table(df_div$plot, df_div$rich)
-
-summary(as.factor(df_div$treatment_edge))
-```
-
-```{r DOWNSTREAM EFFECT }
-cc_stream <- filter(df_div, treatment_edge %in% "CC_MID") %>% arrange(treatment_edge) 
-for_stream <- filter(df_div, treatment_edge %in% "FOR") %>% arrange(treatment_edge) 
-
-bxplt_rich <- df_div %>%
-  ggplot(aes(x = treatment_edge, y = rich, fill =  treatment_edge))+
+bxplt_shan <- df_div %>%
+  ggplot(aes(x = factor(treatment_edge, levels = order_level), y = div, fill =  treatment_edge))+
   geom_violin(width = 1, color = "black", alpha = 0.7) +
   geom_boxplot(width = 0.2, color = "black") +
-  coord_cartesian(ylim=c(0,15))+
-  scale_y_continuous(name = "OTU number", breaks=seq(0, 15, by = 2))+
+  coord_cartesian(ylim=c(0, 2.5))+
+  scale_y_continuous(name = "OTU number", breaks=seq(0, 2.5, by = 0.2))+
   theme(axis.text.x=element_text(color="coral4", size = 11, angle = 0))+
-  facet_grid(~ stream) +
+  facet_grid(~ year) +
   theme(legend.position="none", plot.title = element_text(size = 14)) +
   labs(title = "Richness in OTU by cutting position")+
   xlab("Position from cutting")+
   scale_fill_manual(values = coltreatment)+
   stat_summary(fun.data = give.n, geom = "text", vjust = 2)
-bxplt_rich
+bxplt_shan
+## eveness of sampling
 
+table(df_div$plot, df_div$rich)
+
+summary(as.factor(df_div$treatment_edge))
 ```
-
--- Variables:
-- treatment_edge : fixed 
-- year : fixed
-- stream: fixed ? random ? 
-- orientation: random ? not considered ? 
-- plot: random 
-
--- symbols:
-+ : include
-- : delete
-: : interaction between variables
-* : variables + their interaction
-| : conditionning = X|Y -> include X given Y 
-1 : intercept (can be deleted)
-
-- Random intercept:
-m1 <- lmer(Reaction ~ Days + (1 | Subject), data = sleepstudy)
-
-- Random slope:
-m2 <- lmer(Reaction ~ Days + (0 + Days|Subject), data = sleepstudy)
-
-- Correlated random intercept and slope:
-m3 <- lmer(Reaction ~ Days + (1 + Days|Subject), data = sleepstudy)
-
-- Uncorrelated random intercept and slope:
-m4 <- lmer(Reaction ~ Days + (1|Subject) + (0 + Days|Subject),
-           data = sleepstudy)
 
 ```{r MODEL }
 # https://stats.stackexchange.com/questions/31569/questions-about-how-random-effects-are-specified-in-lmer
@@ -791,25 +780,49 @@ m4 <- lmer(Reaction ~ Days + (1|Subject) + (0 + Days|Subject),
 # if so, correct 
 
 # not possible to put in random effect a variable that is NA for levels of other variable (eg stream with CC_EDG from treatment)
-
 # verif assumption for glmm
-hist(rich)
-glmm <- lme4::glmer(rich ~ treatment_edge * year +
+summary(rich)
+summary(div)
+summary(log(div))
+par(mfrow = c(2, 2))
+hist(rich, breaks = seq(0, 15, by = 1))
+hist(div, breaks = seq(0, 3, by = 0.2))
+hist(log(div))
+par(mfrow = c(1, 1))
+
+glmm_rich <- lme4::glmer(rich ~ treatment_edge * year +
                            (1 | plot),
                          family = poisson(link = "log"),
                          data = df_div) 
 # most complete model, also best
 # glmm : poisson transformation on richness
 
-lm <- lme4::lmer(rich ~ treatment_edge + year + (1 | plot),
-                      data = df_div)
+# glmer non hypothesis of normality, so just plot(model) .> fitted values by 
+glmm_shan <- lme4::lmer(log(div) ~ treatment_edge * year +
+                           (1 | plot),
+                         data = df_div) 
 
-glm <- glm(rich ~ treatment_edge, 
+summary(rich)
+hist(rich, breaks = seq(0, 15, by = 1))
+glm_rich <- glm(rich ~ treatment_edge * year, 
                       family = poisson(link = "log"),
                       data = df_div)
+pchisq(summary(glm_rich)$deviance, summary(glm_rich)$df.residual) # test for testing fitting of family 
+
+par(mfrow = c(2, 2))
+plot(glm_rich) # graphical assumption tests
+par(mfrow = c(1, 1))
+
+# plot fixed effects correlation matrix
+sjPlot::plot_model(glmm_rich)
+# plot qq-plot of random effects
+sjp.glmer(fit, type = "re.qq")
+
+
+summary(glm)
 
 # analysis of variance (lm) or deviance (glm and glmm)
-summary(glmm) # 1 
+summary(glmm_rich) # 1 
 # summary interpretation of fixed effects: 
 ## intercept = CC_EDG + 2012 + CC_EDG:2012, necessarily significant because model no null (0)
 ## CC_MID and FOR are S=/= of CC_EDG independently of year     NB: (S=/= means significantly different)
@@ -1089,30 +1102,131 @@ hala_box2 <- boxplot_abundance(d= ecm_phy, x='treatment_edge', y='otu_table',
 ```
 
 ## 3.2.2 multivariate analysis TY
+```{r multivariate representation}
+# plotting OTUs instead of samples to see which OTU drive the samples in the ordination
+# if possible, othewise, try CA
+
+ecm_phy_ordi_mdsjacc <- ordinate(as_binary_otu_table(ecm_phy), method = "MDS", dist="jaccard")
+ecm_phy_ordi_mdsjacc <- plot_ordination(ecm_phy, ecm_phy_ordi_mdsjacc, type="samples", color="treatment_edge",label="sample_id")+
+  geom_point(size=2)+
+  facet_wrap(~year)+
+  # color and elipse
+  scale_color_manual(values = c("CC_EDG" = "orange",
+                              "CC_MID" = "darkred",
+                              "FOR" = "darkgreen"))+
+  stat_ellipse(type="t", level=0.70)+
+  # legend
+  guides(color=guide_legend(title="position from CC"))+
+  ggtitle(label = "MDS of samples from Halasen_edge by year", subtitle="presence-absence (jaccard distance)")
+ecm_phy_ordi_mdsjacc
+
+ecm_phy_ordi_mdsbray <- ordinate(ecm_phy, method = "MDS", dist="bray")
+ecm_phy_ordi_mdsbray <- plot_ordination(ecm_phy, ecm_phy_ordi_mdsbray, type="samples", color="treatment_edge",label="sample_id")+
+  geom_point(size=2)+
+  facet_wrap(~year)+
+  # color and elipse
+  scale_color_manual(values = c("CC_EDG" = "orange",
+                              "CC_MID" = "darkred",
+                              "FOR" = "darkgreen"))+
+  stat_ellipse(type="t", level=0.70)+
+  # legend
+  guides(color=guide_legend(title="position from CC"))+
+  ggtitle(label = "MDS of samples from Halasen_edge by year",subtitle = "abundance (bray-curtis distance)")
+ecm_phy_ordi_mdsbray
+
+ecm_phy_ordi_phyl_mdsbray <- ordinate(ecm_phy, method = "MDS", dist="bray")
+plot_ordination(ecm_phy, ecm_phy_ordi_phyl_mdsbray, type="taxa", color="Order", shape="Phylum",label="sample_id")+
+  geom_point(size=2)+
+  # color and elipse
+  scale_color_manual(values =cols25(10))+
+  stat_ellipse(type="t", level=0.70)+
+  # legend
+  guides(color=guide_legend(title="position from CC"))+
+  ggtitle(label = "MDS of samples from Halasen_edge by year",subtitle = "abundance (bray-curtis distance)")
+
+# do it with hellinger transformation (relative abundance)
+
+########## 
+# for specification_values
+
+hala_ordi_specvalues_mdsjacc <- ordinate(as_binary_otu_table(ecm_phy), method = "MDS", dist="jaccard")
+ecm_phy_ordi_mdsjacc <- plot_ordination(ecm_phy, hala_ordi_specvalues_mdsjacc, type="samples", color="specification_value",label="sample_id")+
+  geom_point(size=2)+
+  facet_wrap(~year)+
+  # color and elipse
+  scale_color_manual(values = c("N" = "lightblue",
+                              "S" = "lightpink",
+                              "UP" = "darkblue",
+                              "LO" = "darkdarkred"))+
+  stat_ellipse(type="t", level=0.70)+
+  # legend
+  guides(color=guide_legend(title="position from CC"))+
+  ggtitle(label = "MDS of samples from Halasen_edge by year", subtitle="presence-absence (jaccard distance)")
+ecm_phy_ordi_mdsjacc
+```
+```{r multivariate models}
+perm <- adonis_pq(ecm_phy, "treatment_edge * year")
+perm
+
+perm_treatment <- adonis_pq(ecm_phy, "treatment_edge")
+perm_treatment
+
+# separating years 
+## best imo 
+perm_12 <- adonis_pq(ecm_12, "treatment_edge")
+perm_12 # SI
+
+perm_18 <- adonis_pq(ecm_18, "treatment_edge")
+perm_18 # NS 
+
+# corroborates what we are observing graphically 
+```
+```{r heatmap}
+plot_heatmap(physeq, method = "NMDS", distance = "bray",
+  sample.label = NULL, taxa.label = NULL, low = "#000033",
+  high = "#66CCFF", na.value = "black", trans = log_trans(4),
+  max.label = 250, title = NULL, sample.order = NULL,
+  taxa.order = NULL, first.sample = NULL, first.taxa = NULL, ...)
+
+heatmap <- plot_heatmap(ecm_phy, method = "MDS", distance = "bray",
+             sample.label = "treatment_edge",
+             taxa.label = "Genus")
+heatmap
+
+rank_names(yr_12)
+htmap12 <- plot_heatmap(yr_12, method = "MDS", distance = "jaccard",
+             sample.label = "treatment_edge", sample.order = order_level,
+             taxa.label = "OTU_ID",
+             low = "grey", high = "red", na.value = "white")
+htmap12
+
+htmap18 <- plot_heatmap(yr_18, method = "MDS", distance = "jaccard",
+             sample.label = "treatment_edge", sample.order = order_level,
+             taxa.label = "OTU_ID",
+             low = "grey", high = "red", na.value = "white")
+htmap18
+```
+```{r circle graph}
+circle_pq(ecm_phy, "treatment_edge", taxa = "Genus", add_nb_seq = F,
+          grid_col = "darkgrey",
+          row_col = coltreatment)
+```
+
 
 # *3' HALASEN STUDY: STREAM + YEAR*
 ## 3.1 stat test TY
-```{r EDGE - NORTH & UPPER LOWER }
-summary(rich)
-summary(div)
+```{r DOWNSTREAM EFFECT }
+cc_stream <- filter(df_div, treatment_edge %in% "CC_MID") %>% arrange(treatment_edge) 
+for_stream <- filter(df_div, treatment_edge %in% "FOR") %>% arrange(treatment_edge) 
 
-str(df_div)
+bxplt_rich_str <- df_div_str %>%
+  ggplot(aes(x = treatment_edge, y = rich_str, fill =  stream))+
+  geom_boxplot(width = 0.4, color = "black")+
+  facet_grid(~year)
+bxplt_rich_str
 
-stde_ <- tapply(df_div$div, df_div$treatment_edge, stde) # if needed for tables
-median_ <- tapply(df_div$div,df_div$treatment_edge, median)
-min_ <- tapply(df_div$div,df_div$treatment_edge, min)
-max_ <- tapply(df_div$div,df_div$treatment_edge, max)
-
-boxplot(div ~ ecm_phy@sam_data$treatment_edge)
-boxplot(rich ~ ecm_phy@sam_data$treatment_edge) # same as hill0 (down) -> good
-boxplot(rich ~ ecm_phy@sam_data$specification_value)
-
-bxplt_rich <- df_div %>%
-  ggplot(aes(x = factor(treatment_edge, levels = order_level), y = rich, fill =  treatment_edge))+
-  geom_violin(width = 1, color = "black", alpha = 0.7) +
-  geom_boxplot(width = 0.2, color = "black") +
-  coord_cartesian(ylim=c(0,15))+
-  scale_y_continuous(name = "OTU number", breaks=seq(0, 15, by = 2))+
+ coord_cartesian(ylim=c(0,15))+
+  scale_y_continuous(name = "OTU number", breaks = seq(0, 15, by = 2))+
   theme(axis.text.x=element_text(color="coral4", size = 11, angle = 0))+
   facet_grid(~ year) +
   theme(legend.position="none", plot.title = element_text(size = 14)) +
@@ -1120,67 +1234,8 @@ bxplt_rich <- df_div %>%
   xlab("Position from cutting")+
   scale_fill_manual(values = coltreatment)+
   stat_summary(fun.data = give.n, geom = "text", vjust = 2)
-bxplt_rich
-## 
-
-table(df_div$plot, df_div$rich)
-
-summary(as.factor(df_div$treatment_edge))
 ```
-
-```{r DOWNSTREAM EFFECT }
-cc_stream <- filter(df_div, treatment_edge %in% "CC_MID") %>% arrange(treatment_edge) 
-for_stream <- filter(df_div, treatment_edge %in% "FOR") %>% arrange(treatment_edge) 
-
-bxplt_rich <- df_div %>%
-  ggplot(aes(x = treatment_edge, y = rich, fill =  treatment_edge))+
-  geom_violin(width = 1, color = "black", alpha = 0.7) +
-  geom_boxplot(width = 0.2, color = "black") +
-  coord_cartesian(ylim=c(0,15))+
-  scale_y_continuous(name = "OTU number", breaks=seq(0, 15, by = 2))+
-  theme(axis.text.x=element_text(color="coral4", size = 11, angle = 0))+
-  facet_grid(~ stream) +
-  theme(legend.position="none", plot.title = element_text(size = 14)) +
-  labs(title = "Richness in OTU by cutting position")+
-  xlab("Position from cutting")+
-  scale_fill_manual(values = coltreatment)+
-  stat_summary(fun.data = give.n, geom = "text", vjust = 2)
-bxplt_rich
-
-```
-
--- Variables:
-- treatment_edge : fixed 
-- year : fixed
-- stream: fixed ? random ? 
-- orientation: random ? not considered ? 
-- plot: random 
-
--- symbols:
-+ : include
-- : delete
-: : interaction between variables
-* : variables + their interaction
-| : conditionning = X|Y -> include X given Y 
-1 : intercept (can be deleted)
-
-- Random intercept:
-m1 <- lmer(Reaction ~ Days + (1 | Subject), data = sleepstudy)
-
-- Random slope:
-m2 <- lmer(Reaction ~ Days + (0 + Days|Subject), data = sleepstudy)
-
-- Correlated random intercept and slope:
-m3 <- lmer(Reaction ~ Days + (1 + Days|Subject), data = sleepstudy)
-
-- Uncorrelated random intercept and slope:
-m4 <- lmer(Reaction ~ Days + (1|Subject) + (0 + Days|Subject),
-           data = sleepstudy)
-
 ```{r MODEL }
-# https://stats.stackexchange.com/questions/31569/questions-about-how-random-effects-are-specified-in-lmer
-## for constructing model with random effects
-
 ## for interaction : 
 ## ":" or "*" -> figure which symbol is appropriate
 
@@ -1191,20 +1246,34 @@ m4 <- lmer(Reaction ~ Days + (1|Subject) + (0 + Days|Subject),
 # not possible to put in random effect a variable that is NA for levels of other variable (eg stream with CC_EDG from treatment)
 
 # verif assumption for glmm
-hist(rich)
-glmm <- lme4::glmer(rich ~ treatment_edge * year +
+summary(rich)
+par(mfrow = c(1, 2))
+hist(rich, breaks = seq(0, 15, by = 1))
+hist(div, breaks = seq(0, 3, by = 0.2))
+par(mfrow = c(1, 1))
+
+
+
+glmm_rich <- lme4::glmer(rich ~ treatment_edge * year +
                            (1 | plot),
                          family = poisson(link = "log"),
                          data = df_div) 
 # most complete model, also best
 # glmm : poisson transformation on richness
+pchisq(summary(glm_rich)$deviance, summary(glm_rich)$df.residual) # test for testing fitting of family 
 
-lm <- lme4::lmer(rich ~ treatment_edge + year + (1 | plot),
-                      data = df_div)
-
-glm <- glm(rich ~ treatment_edge, 
+summary(rich)
+hist(rich, breaks = seq(0, 15, by = 1))
+glm_rich <- glm(rich ~ treatment_edge * year, 
                       family = poisson(link = "log"),
                       data = df_div)
+
+hist(residuals.glm(glm_rich))
+par(mfrow = c(2, 2))
+plot(glm_rich) # graphical assumption tests
+par(mfrow = c(1, 1))
+
+summary(glm)
 
 # analysis of variance (lm) or deviance (glm and glmm)
 summary(glmm) # 1 
@@ -1218,12 +1287,11 @@ summary(glmm) # 1
 # summary interpretation of correlations:
 
 anova(glmm, test = "LR") # order influence significance intercept (CC_EDG select as intercept, alphabetically or 1st row of df.)
-summary(glmm_richtest) # 2
-anova(glmm_richtest)
-summary(glm) # 3
 anova(glm, test = "LR") # ou methode des moindres carres, etc. # function # anova (analysis of deviance) is working only for glm, not glmm
-summary(lm)
-anova(lm)
+E2 <- resid(glmm, type = "pearson")
+N  <- nrow(df_div)
+p  <- length(coef(glmm))   
+sum(E2^2) / (N - p)
 
 anova(glm, test = "LR")
 ## copied from dataset
@@ -1562,11 +1630,6 @@ perm_18 # NS
 # corroborates what we are observing graphically 
 ```
 
-
-## 3'.1 
-```{r}
-
-```
 
 # *4 HALASEN_5P STUDY: randomly distributed retention trees*
 ## 4.1 design and sampling

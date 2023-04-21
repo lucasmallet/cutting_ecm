@@ -31,6 +31,7 @@ library(hrbrthemes) # palettes and themes
 library(emmeans) # tukey test for GLM
 library(ISLR) # McFadden’s R-Squared for GLM
 library(ape)
+library(sjPlot) # for glmm visualization
 ```
 ```{r color palette}
 pals::pal.bands(alphabet, alphabet2, cols25, glasbey, kelly, polychrome, 
@@ -413,18 +414,18 @@ physeq@sam_data$orient[which(physeq@sam_data$specification_value == "S")] <- "S"
 phy <- physeq
 ```
 
-```{r}
+```{r subsets}
+# subsetting based on sites and guilds 
+# CTRL F + remove_empty_samples = T <-> remove_empty_samples = F
+
+# guilds of whole dataset
 ecm_phy <- subset_taxa(physeq, primary_lifestyle == "ectomycorrhizal") %>% 
 clean_pq(remove_empty_samples = FALSE, remove_empty_taxa = T, clean_samples_names = F)
 sapr_phy <- subset_taxa(physeq, primary_lifestyle == "saprotroph") %>% 
 clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = F)
 other_phy <- subset_taxa(physeq, (primary_lifestyle == "other_lifestyle" | is.na(primary_lifestyle)))  %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = F)
-```
 
-```{r subsets}
-# subsetting based on sites and guilds 
-# CTRL F + remove_empty_samples = T <-> remove_empty_samples = F
-
+# per year
 ecm_12 <- subset_samples(ecm_phy, ecm_phy@sam_data$year=="2012") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
 ecm_18 <- subset_samples(ecm_phy, ecm_phy@sam_data$year=="2018") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
 
@@ -451,6 +452,7 @@ ecm_phy_t <- phyloseq(ecm_phy_otu_t, ecm_phy@sam_data, ecm_phy@tax_table) %>% cl
 ```
 
 ```{r grouping by factor of insterest}
+# grouping per level of treatment for raref curves
 yr_12 <- merge_group(ecm_12, group = "treatment_edge",)
 yr_18 <- merge_group(ecm_18, group = "treatment_edge",)
 ```
@@ -464,5 +466,26 @@ rich <- vegan::specnumber(x= t(ecm_phy@otu_table))
 df_div <- data.frame(ecm_phy@sam_data, div, rich) 
 colnames(df_div)
 df_div[, c(3:12)] <- lapply(df_div[, c(3:12)], as.factor) # tranforming columns into factors
+
+
+stde_ <- tapply(df_div$div, df_div$treatment_edge, stde) # if needed for tables
+median_ <- tapply(df_div$div,df_div$treatment_edge, median)
+min_ <- tapply(df_div$div,df_div$treatment_edge, min)
+max_ <- tapply(df_div$div,df_div$treatment_edge, max)
+
+# for stream test
+div_str <- vegan::diversity(x = t(stream@otu_table),
+                             index = "shannon")
+rich_str <- vegan::specnumber(x= t(stream@otu_table))
+
+df_div_str <- data.frame(stream@sam_data, div_str, rich_str) 
+colnames(df_div_str)
+df_div_str[, c(3:12)] <- lapply(df_div_str[, c(3:12)], as.factor) # tranforming columns into factors
+
+
+stde_str <- tapply(df_div_str$div, df_div_str$treatment_edge, stde) # if needed for tables
+median_str <- tapply(df_div_str$div,df_div_str$treatment_edge, median)
+min_str <- tapply(df_div_str$div,df_div_str$treatment_edge, min)
+max_str <- tapply(df_div_str$div,df_div_str$treatment_edge, max)
 ```
 
