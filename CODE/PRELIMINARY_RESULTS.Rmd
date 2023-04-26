@@ -729,6 +729,7 @@ hist(colSums(ecm_phy@otu_table))
 ```{r indexes model treatment * year }
 summary(rich)
 summary(div)
+summary(even)
 
 str(df_div)
 
@@ -762,6 +763,21 @@ bxplt_shan <- df_div %>%
   stat_summary(fun.data = give.n, geom = "text", vjust = 2)
 bxplt_shan
 ## eveness of sampling
+
+bxplt_even <- df_div %>%
+  ggplot(aes(x = factor(treatment_edge, levels = order_level), y = even, fill =  treatment_edge))+
+  geom_violin(width = 1, color = "black", alpha = 0.7) +
+  geom_boxplot(width = 0.2, color = "black") +
+  coord_cartesian(ylim=c(0, 1))+
+  scale_y_continuous(name = "OTU number", breaks=seq(0, 1, by = 0.1))+
+  theme(axis.text.x=element_text(color="coral4", size = 11, angle = 0))+
+  facet_grid(~ year) +
+  theme(legend.position="none", plot.title = element_text(size = 14)) +
+  labs(title = "Richness in OTU by cutting position")+
+  xlab("Position from cutting")+
+  scale_fill_manual(values = coltreatment)+
+  stat_summary(fun.data = give.n, geom = "text", vjust = 2)
+bxplt_even # N - 12 because of NaN values (samplings with only 1 OTU)
 
 table(df_div$plot, df_div$rich)
 
@@ -1146,7 +1162,7 @@ plot_ordination(ecm_phy, ecm_phy_ordi_phyl_mdsbray, type="taxa", color="Order", 
 
 # do it with hellinger transformation (relative abundance)
 
-########## 
+
 # for specification_values
 
 hala_ordi_specvalues_mdsjacc <- ordinate(as_binary_otu_table(ecm_phy), method = "MDS", dist="jaccard")
@@ -1182,25 +1198,62 @@ perm_18 # NS
 # corroborates what we are observing graphically 
 ```
 ```{r heatmap}
-plot_heatmap(physeq, method = "NMDS", distance = "bray",
-  sample.label = NULL, taxa.label = NULL, low = "#000033",
-  high = "#66CCFF", na.value = "black", trans = log_trans(4),
-  max.label = 250, title = NULL, sample.order = NULL,
-  taxa.order = NULL, first.sample = NULL, first.taxa = NULL, ...)
 
+# by sample
 heatmap <- plot_heatmap(ecm_phy, method = "MDS", distance = "bray",
              sample.label = "treatment_edge",
              taxa.label = "Genus")
 heatmap
 
+# by treatment 
+htmp_all <- plot_heatmap(phy_merged, method = "MDS", distance = "bray",
+             sample.label = "yr_treat", sample.order = order_level_mg,
+             taxa.label = "Genus", 
+             low = "grey", high = "red", na.value = "white")
+htmp_all # is it possible to represent it by taxa Genus ? 
+
+View(htmp_all$data)
+
+
+# transforming Genus in factor 
+htmp_all_df <- data.frame(htmp_all$data)
+
+ht_count0 <- htmp_all$data %>% group_by(Genus, yr_treat) %>%
+  dplyr::summarise(sumcount = sum(Abundance, na.rm = TRUE)) %>% as.data.frame()
+
+ht_count <- ht_count0 %>%
+  # convert state to factor and reverse order of levels
+  mutate(Genus = factor(Genus, levels = rev(sort(unique(Genus))))) %>%
+  # create a new variable from count
+  mutate(countfactor = cut(sumcount, breaks = c(-1, 1, 5, 10, 50, 150, 450, max(sumcount, na.rm = T)),
+                          labels=c("0", "0-1", "5-10", "10-50", "50-150", "150-450", ">450"))) %>%
+  # change level order
+  mutate(countfactor=factor(as.character(countfactor), levels=rev(levels(countfactor))))
+ht_count_yr <- ifelse(grepl("2012", ht_count$yr_treat), "2012", "2018")
+ht_count_treat <- if(grep)
+
+ht_count <- cbind(ht_count, ht_count_yr)
+
+htmap_all <- ggplot(ht_count,  aes(x = factor(yr_treat, levels = order_level_mg), y = Genus, fill = countfactor))+ 
+  geom_tile(colour = "white", size = 0.4)+
+  scale_fill_manual(values = rev(c("grey90", RColorBrewer::brewer.pal(n = 6, name = "YlOrRd"))), na.value = "grey90")+
+  theme_grey(base_size = 10)+
+  guides(fill =guide_legend(title = str_wrap("Number of sequence reads (rarefied)", width = 20)))+
+  labs(x = "Position to CC and year", y = "Genus", title = "Occurence of OTU Genus by position to CC and year")
+  
+htmap_all
+  
+
+## 
+
 rank_names(yr_12)
-htmap12 <- plot_heatmap(yr_12, method = "MDS", distance = "jaccard",
+htmap12 <- plot_heatmap(yr_12, method = "MDS", distance = "bray",
              sample.label = "treatment_edge", sample.order = order_level,
-             taxa.label = "OTU_ID",
+             taxa.label = "OTU_ID", 
              low = "grey", high = "red", na.value = "white")
 htmap12
 
-htmap18 <- plot_heatmap(yr_18, method = "MDS", distance = "jaccard",
+htmap18 <- plot_heatmap(yr_18, method = "MDS", distance = "bray",
              sample.label = "treatment_edge", sample.order = order_level,
              taxa.label = "OTU_ID",
              low = "grey", high = "red", na.value = "white")
@@ -1594,7 +1647,7 @@ plot_ordination(ecm_phy, ecm_phy_ordi_phyl_mdsbray, type="taxa", color="Order", 
   guides(color=guide_legend(title="position from CC"))+
   ggtitle(label = "MDS of samples from Halasen_edge by year",subtitle = "abundance (bray-curtis distance)")
 
-########## 
+##
 # for specification_values
 
 hala_ordi_specvalues_mdsjacc <- ordinate(as_binary_otu_table(ecm_phy), method = "MDS", dist="jaccard")

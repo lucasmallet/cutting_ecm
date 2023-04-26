@@ -66,6 +66,7 @@ coltreatment <- c("CC_EDG" = "khaki2",
                   "FOR" = "springgreen4") # palette for treatment
 
 order_level <- c("FOR", "CC_EDG", "CC_MID") # ordination of factors (aes = factor(x, levels = order_level))
+order_level_mg <- c("2012FOR", "2012CC_EDG", "2012CC_MID", "2018FOR", "2018CC_EDG", "2018CC_MID")
 ```
 
 *DATA IMPORTATION AND MODIF*
@@ -453,8 +454,15 @@ ecm_phy_t <- phyloseq(ecm_phy_otu_t, ecm_phy@sam_data, ecm_phy@tax_table) %>% cl
 
 ```{r grouping by factor of insterest}
 # grouping per level of treatment for raref curves
+var1 <- as.character(get_variable(ecm_phy, "year"))
+var2 <- as.character(get_variable(ecm_phy, "treatment_edge"))
+sample_data(ecm_phy)$yr_treat <- mapply(paste0, var1, var2, collapse = "_")
+phy_merged <- merge_group(ecm_phy, "yr_treat")
+
 yr_12 <- merge_group(ecm_12, group = "treatment_edge",)
 yr_18 <- merge_group(ecm_18, group = "treatment_edge",)
+
+yr_12 <- merge_samples(ecm_12, group = "treatment_edge",)
 ```
 
 ```{r diversity indexes}
@@ -462,8 +470,10 @@ yr_18 <- merge_group(ecm_18, group = "treatment_edge",)
 div <- vegan::diversity(x = t(ecm_phy@otu_table),
                              index = "shannon")
 rich <- vegan::specnumber(x= t(ecm_phy@otu_table))
-
-df_div <- data.frame(ecm_phy@sam_data, div, rich) 
+even <- div/ log(rich) # Pielou's evenness # tend to 1 = more evenly distributed 
+taxeco_f$ID_TYPE[is.na(taxeco_f$ID_TYPE)] <- "AUTO_ID" 
+even[even == 0] <- even["NaN"]
+df_div <- data.frame(ecm_phy@sam_data, div, rich, even) 
 colnames(df_div)
 df_div[, c(3:12)] <- lapply(df_div[, c(3:12)], as.factor) # tranforming columns into factors
 
