@@ -1122,8 +1122,9 @@ hala_box2 <- boxplot_abundance(d= ecm_phy, x='treatment_edge', y='otu_table',
 # plotting OTUs instead of samples to see which OTU drive the samples in the ordination
 # if possible, othewise, try CA
 
+# jaccard
 ecm_phy_ordi_mdsjacc <- ordinate(as_binary_otu_table(ecm_phy), method = "MDS", dist="jaccard")
-ecm_phy_ordi_mdsjacc <- plot_ordination(ecm_phy, ecm_phy_ordi_mdsjacc, type="samples", color="treatment_edge",label="sample_id")+
+ecm_phy_ordi_mdsjacc <- plot_ordination(ecm_phy, ecm_phy_ordi_mdsjacc, type = "samples", color="treatment_edge",label="sample_id")+
   geom_point(size=2)+
   facet_wrap(~year)+
   # color and elipse
@@ -1136,6 +1137,7 @@ ecm_phy_ordi_mdsjacc <- plot_ordination(ecm_phy, ecm_phy_ordi_mdsjacc, type="sam
   ggtitle(label = "MDS of samples from Halasen_edge by year", subtitle="presence-absence (jaccard distance)")
 ecm_phy_ordi_mdsjacc
 
+# bray
 ecm_phy_ordi_mdsbray <- ordinate(ecm_phy, method = "MDS", dist="bray")
 ecm_phy_ordi_mdsbray <- plot_ordination(ecm_phy, ecm_phy_ordi_mdsbray, type="samples", color="treatment_edge",label="sample_id")+
   geom_point(size=2)+
@@ -1150,6 +1152,21 @@ ecm_phy_ordi_mdsbray <- plot_ordination(ecm_phy, ecm_phy_ordi_mdsbray, type="sam
   ggtitle(label = "MDS of samples from Halasen_edge by year",subtitle = "abundance (bray-curtis distance)")
 ecm_phy_ordi_mdsbray
 
+# taxa plot
+ecm_phy_mdsbray_tax <- ordinate(ecm_phy, method = "MDS", dist="bray")
+ecm_phy_mdsbray_tax <- plot_ordination(ecm_phy, ecm_phy_mdsbray_tax, type = "taxa", color="treatment_edge",label = "OTU_ID")+
+  geom_point(size=2)+
+  # color and elipse
+  scale_color_manual(values = c("CC_EDG" = "orange",
+                              "CC_MID" = "darkred",
+                              "FOR" = "darkgreen"))+
+  stat_ellipse(type="t", level=0.70)+
+  # legend
+  guides(color=guide_legend(title="position from CC"))+
+  ggtitle(label = "MDS of samples from Halasen_edge by year",subtitle = "abundance (bray-curtis distance)")
+ecm_phy_mdsbray_tax
+
+# phylog
 ecm_phy_ordi_phyl_mdsbray <- ordinate(ecm_phy, method = "MDS", dist="bray")
 plot_ordination(ecm_phy, ecm_phy_ordi_phyl_mdsbray, type="taxa", color="Order", shape="Phylum",label="sample_id")+
   geom_point(size=2)+
@@ -1229,11 +1246,15 @@ ht_count <- ht_count0 %>%
                           labels=c("0", "0-1", "5-10", "10-50", "50-150", "150-450", ">450"))) %>%
   # change level order
   mutate(countfactor=factor(as.character(countfactor), levels=rev(levels(countfactor))))
-ht_count_yr <- ifelse(grepl("2012", ht_count$yr_treat), "2012", "2018")
-ht_count_treat <- if(grep)
 
-ht_count <- cbind(ht_count, ht_count_yr)
+# trying to creat multi xlabel
+yr <- ifelse(grepl("2012", ht_count$yr_treat), "2012", "2018")
+treat <- ifelse(grepl("CC_EDG", ht_count$yr_treat), "CC_EDG",
+                         ifelse(grepl("CC_MID", ht_count$yr_treat), "CC_MID", "FOR")) # nested ifelse
+ht_count <- cbind(ht_count, yr, treat)
+# dont know.
 
+# plotting
 htmap_all <- ggplot(ht_count,  aes(x = factor(yr_treat, levels = order_level_mg), y = Genus, fill = countfactor))+ 
   geom_tile(colour = "white", size = 0.4)+
   scale_fill_manual(values = rev(c("grey90", RColorBrewer::brewer.pal(n = 6, name = "YlOrRd"))), na.value = "grey90")+
@@ -1242,7 +1263,6 @@ htmap_all <- ggplot(ht_count,  aes(x = factor(yr_treat, levels = order_level_mg)
   labs(x = "Position to CC and year", y = "Genus", title = "Occurence of OTU Genus by position to CC and year")
   
 htmap_all
-  
 
 ## 
 

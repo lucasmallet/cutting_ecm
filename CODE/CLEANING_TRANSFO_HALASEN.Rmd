@@ -59,6 +59,27 @@ give.n <- function(x){
 # hellinger : sum of reads per sample = 1 ? (as same as relative abundance ?)
 
 #abund1 <- c(sample(0:250, n = 10))
+
+# function if()
+if (test_expression) {
+statement1
+} else {
+statement2
+}
+
+x <- 0
+if (x < 0) {
+  print("Negative number")
+} else if (x > 0) {
+  print("Positive number")
+} else {
+  print("Zero")
+}
+
+# if() is used for a single value
+# to check for a vector: use ifelse instead
+# can use ifelse(test, yes, (test, yes, no)) nested 
+
 ```
 ```{r objects}
 coltreatment <- c("CC_EDG" = "khaki2",
