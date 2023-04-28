@@ -92,6 +92,7 @@ coltreatment_raref <- c("EDG" = "orange",
 
 order_level <- c("FOR", "EDG", "CC") # ordination of factors (aes = factor(x, levels = order_level))
 order_level_mg <- c("2012FOR", "2012EDG", "2012CC", "2018FOR", "2018EDG", "2018CC")
+order_level_simpl <- c("FOR_12", "EDG_12", "CC_12", "FOR_18", "EDG_18", "CC_18")
 ```
 
 *DATA IMPORTATION AND MODIF*

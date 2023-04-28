@@ -1224,12 +1224,24 @@ perm_18 # NS
 # corroborates what we are observing graphically 
 ```
 ```{r heatmap}
+# distance heatmap (bray)
+braydist = phyloseq::distance(ecm_phy, "bray")
+dist_df = reshape2::melt(as.matrix(braydist))
+colnames(dist_df) <- c("Samples1", "Samples2", "Bray_Curtis")
+
+htmp_bray <- ggplot(dist_df, aes(Samples1, Samples2, fill = Bray_Curtis)) + 
+  geom_tile()+
+  theme(axis.text.x = element_text(angle = -90, vjust = 0.5, hjust = 0)) + 
+  xlab("Samples") + ylab("Samples")
+htmp_bray
+
 # grouped heatmaps
 ## by treatment 
-htmp_all <- plot_heatmap(phy_merged, method = "MDS", distance = "bray",
+htmp_all <- plot_heatmap(phy_merged, method = "MDS",
              sample.label = "yr_treat", sample.order = order_level_mg,
              taxa.label = "Genus", 
              low = "grey", high = "red", na.value = "white")
+htmp_all
 
 ht_count0 <- htmp_all$data %>% group_by(Genus, yr_treat) %>%
   dplyr::summarise(sumcount = sum(Abundance, na.rm = TRUE)) %>% as.data.frame()
@@ -1256,8 +1268,9 @@ htmap_all <- ggplot(ht_count,  aes(x = factor(yr_treat, levels = order_level_mg)
   scale_fill_manual(values = rev(c("grey90", RColorBrewer::brewer.pal(n = 6, name = "YlOrRd"))), na.value = "grey90")+
   theme_grey(base_size = 10)+
   guides(fill =guide_legend(title = str_wrap("Number of sequence reads (rarefied)", width = 20)))+
-  labs(x = "Position to CC and year", y = "Genus", title = "Occurence of OTU Genus by position to CC and year")
-  
+  labs(x = "Position to CC and year", y = "Genus", title = "Occurence of OTU Genus by position to CC and year")+
+  scale_x_discrete(labels = order_level_simpl)
+
 htmap_all
 
 # precise heatmap
