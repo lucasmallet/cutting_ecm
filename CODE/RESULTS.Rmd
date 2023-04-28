@@ -68,15 +68,10 @@ for constructing model with random effects
 
 -testing autocorrelation in plots (if we want to analyse them independantly)
 
-- rarefactions pb 
 - venn pb (all common, nothing specific)
-- hill (or similar)
-- deciding between circle (focus on genus distribution among treatments) or barplot (focusing on treatment differences)
-- mds-nmds etc.
 - permanova/adonis
 - commenting ##
 - synthetic tab for MM 
-- ID the missing samples (and create a design table)
 
 ~~ 27/03/23
 
@@ -660,7 +655,7 @@ which(colSums(ecm_phy@otu_table) == 0)
 ecm_phy@sam_data[which(colSums(ecm_phy@otu_table) == 0)]
 ## sample with 0 ECM read 
 
-## --> total missing : 3 + 4 = 7 (64 - 7 = 57)
+## --> total missing : 4 + 3 = 7 (64 - 7 = 57)
 
 # design table
 summary(as.factor(sam$treatment)) 
@@ -955,7 +950,10 @@ boxplot(rich_hala ~ ecm_phy@sam_data$specification_value)
 # maybe consider the nb of samples (to limit biais in unbalanced design
 hala_rrcurve_groups1 <- phyloseq.extended::ggrare(yr_12, step = 10, color = "treatment_edge",plot=F, se=T)+ 
   facet_wrap(~ year)+
-  geom_vline(xintercept = min(rowSums(yr_12@otu_table)), color = "coral3")+
+  coord_cartesian(ylim = c(1, max(vegan::specnumber(yr_12@otu_table))))+
+  scale_x_continuous(breaks = seq(0, max(rowSums(yr_12@otu_table)), by = 200))+
+  scale_y_continuous(breaks = seq(0, max(vegan::specnumber(yr_12@otu_table)), by = 5))+
+  geom_vline(xintercept = min(rowSums(yr_12@otu_table)), color = "coral4")+
   labs(x = "Group size (ie sum of samples reads per group)",
        y =  "OTU richness",
        title = "Rarefaction curves by treatment group",
@@ -979,8 +977,10 @@ hala_rrcurve_groups2 <- phyloseq.extended::ggrare(yr_18, step = 10, color = "tre
        color = "Treatment")+
   guides(fill = F)+ # Suppressing the filling (standard error) legend 
   theme(legend.position = c(0.85, 0.6))+
+  annotate("text", x = 220, y = 3, label = "min treatment group size (n = 205)", size = 3.5, angle=0, color = "coral4", hjust = 0)+
   scale_color_manual(values = coltreatment_raref)+
   scale_fill_manual(values = coltreatment_raref)
+
 hala_rrcurve_groups2
 
 hala_rrcurve <- phyloseq.extended::ggrare(ecm_phy, step = 10, color = "treatment_edge", plot = F, se=T)+
@@ -1239,7 +1239,7 @@ htmp_bray
 ## by treatment 
 htmp_all <- plot_heatmap(phy_merged, method = "MDS",
              sample.label = "yr_treat", sample.order = order_level_mg,
-             taxa.label = "Genus", 
+             taxa.label = "OTU_ID", 
              low = "grey", high = "red", na.value = "white")
 htmp_all
 
