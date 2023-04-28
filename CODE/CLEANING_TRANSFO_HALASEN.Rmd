@@ -82,12 +82,16 @@ if (x < 0) {
 
 ```
 ```{r objects}
-coltreatment <- c("CC_EDG" = "khaki2",
-                  "CC_MID" = "coral2",
+coltreatment <- c("EDG" = "khaki2",
+                  "CC" = "coral2",
                   "FOR" = "springgreen4") # palette for treatment
 
-order_level <- c("FOR", "CC_EDG", "CC_MID") # ordination of factors (aes = factor(x, levels = order_level))
-order_level_mg <- c("2012FOR", "2012CC_EDG", "2012CC_MID", "2018FOR", "2018CC_EDG", "2018CC_MID")
+coltreatment_raref <- c("EDG" = "orange",
+                                "CC" = "coral2",
+                                "FOR" = "springgreen4")
+
+order_level <- c("FOR", "EDG", "CC") # ordination of factors (aes = factor(x, levels = order_level))
+order_level_mg <- c("2012FOR", "2012EDG", "2012CC", "2018FOR", "2018EDG", "2018CC")
 ```
 
 *DATA IMPORTATION AND MODIF*
@@ -419,8 +423,8 @@ physeq@sam_data$specification_value <- plyr::revalue(physeq@sam_data$specificati
 physeq@sam_data <- within(physeq@sam_data, treatment_edge[treatment_edge=="middle" & treatment=="forest"] <- "FOR") 
 
 physeq@sam_data$treatment_edge <- plyr::revalue(physeq@sam_data$treatment_edge,
-                           c("middle"="CC_MID", 
-                             "edge"="CC_EDG"))
+                           c("middle"="CC", 
+                             "edge"="EDG"))
 as.factor(physeq@sam_data$treatment_edge) %>% droplevels() %>% levels()
 
 # variables stream (upper or lower) and orientation (north or south)
@@ -482,8 +486,6 @@ phy_merged <- merge_group(ecm_phy, "yr_treat")
 
 yr_12 <- merge_group(ecm_12, group = "treatment_edge",)
 yr_18 <- merge_group(ecm_18, group = "treatment_edge",)
-
-yr_12 <- merge_samples(ecm_12, group = "treatment_edge",)
 ```
 
 ```{r diversity indexes}
