@@ -2,6 +2,8 @@
 title: "CLEANING_TRANSFO_HALASEN"
 output: html_document
 date: "2023-04-12"
+editor_options: 
+  chunk_output_type: console
 ---
 
 *NOTES* TOASK : ctrl + F this and search - new variable : upper - lower - resolve otu pb - *LIBRARY*
@@ -32,6 +34,16 @@ library(emmeans) # tukey test for GLM
 library(ISLR) # McFadden’s R-Squared for GLM
 library(ape)
 library(sjPlot) # for glmm visualization
+# undersampling lib
+library(purrr)
+library(ROSE)
+library(randomForest)
+library(caret)
+library(e1071)
+devtools::install_github('schuyler-smith/phylosmith')
+library(phylosmith)
+library(brms)
+library(glmmTMB)
 ```
 ```{r color palette}
 pals::pal.bands(alphabet, alphabet2, cols25, glasbey, kelly, polychrome, 
@@ -61,11 +73,6 @@ give.n <- function(x){
 #abund1 <- c(sample(0:250, n = 10))
 
 # function if()
-if (test_expression) {
-statement1
-} else {
-statement2
-}
 
 x <- 0
 if (x < 0) {
@@ -83,16 +90,16 @@ if (x < 0) {
 ```
 ```{r objects}
 coltreatment <- c("EDG" = "khaki2",
-                  "CC" = "coral2",
+                  "CUT" = "coral2",
                   "FOR" = "springgreen4") # palette for treatment
 
 coltreatment_raref <- c("EDG" = "orange",
-                                "CC" = "coral2",
+                                "CUT" = "red3",
                                 "FOR" = "springgreen4")
 
-order_level <- c("FOR", "EDG", "CC") # ordination of factors (aes = factor(x, levels = order_level))
-order_level_mg <- c("2012FOR", "2012EDG", "2012CC", "2018FOR", "2018EDG", "2018CC")
-order_level_simpl <- c("FOR_12", "EDG_12", "CC_12", "FOR_18", "EDG_18", "CC_18")
+order_level <- c("FOR", "EDG", "CUT") # ordination of factors (aes = factor(x, levels = order_level))
+order_level_mg <- c("2012FOR", "2012EDG", "2012CUT", "2018FOR", "2018EDG", "2018CUT")
+order_level_simpl <- c("FOR_12", "EDG_12", "CUT_12", "FOR_18", "EDG_18", "CUT_18")
 ```
 
 *DATA IMPORTATION AND MODIF*
@@ -108,7 +115,7 @@ raw_clust <- read.table("raw_clusters.txt",header=T,sep="\t",na.strings=T,dec=".
   arrange(desc(Cluster_Size)) # importing and arrange by decreasing cluster size
 raw_clust[raw_clust==""] <- NA # putting NA when empty
 raw_clust[,4] <- as.character(raw_clust[,4]) # reference as.character
-raw_clust$Cluster_ID <- gsub('scata5670_','c',raw_clust$Cluster_ID) # replace character occurence in all cells
+raw_clust$Cluster_ID <- gsub('scata5670_','c',raw_clust$Cluster_ID) # replace character oCUTurence in all cells
 rownames(raw_clust) <- raw_clust$Cluster_ID
 order <- raw_clust$Cluster_ID 
 order <- gsub('c','',raw_clust$Cluster_ID) # creating a vector order so we can arrange later
@@ -197,6 +204,80 @@ rownames(sam) <- sam$sample_id # after transposing, resolving pb with headers
 # subsetting design samples per site 
 sam_hala <- subset(sam, sam$site == "Halasen") # 61 samples
 sam_controls_na <- filter(sam, !site %in% c("Halasen", "Fangamon", "Halasen_p_5")) # 19 samples (or controls)
+```
+```{r changing levels of factor for sam}
+factor(sam_hala$specification) %>% levels()
+sam_hala$treatment_edge <- plyr::revalue(sam_hala$specification,
+                           c("edge_north"="edge", 
+                             "edge_south"="edge",
+                             "kant_norra"="edge", 
+                             "middle_lower"="middle", 
+                             "middle_upper"="middle",
+                             "midle"="middle"))
+as.factor(sam_hala$treatment_edge) %>% droplevels() %>% levels()
+
+sam_hala$specification_value <- plyr::revalue(sam_hala$specification,
+                           c("edge_north"="N", 
+                             "edge_south"="S",
+                             "kant_norra"="N", 
+                             "middle_lower"="LO", 
+                             "middle_upper"="UP",
+                             "midle"= NA,
+                             "middle"= NA))
+
+sam_hala <- within(sam_hala, treatment_edge[treatment_edge=="middle" & treatment=="forest"] <- "FOR") 
+
+sam_hala$treatment_edge <- plyr::revalue(sam_hala$treatment_edge,
+                           c("middle"="CUT", 
+                             "edge"="EDG"))
+as.factor(sam_hala$treatment_edge) %>% droplevels() %>% levels()
+
+sam_hala12 <- subset(sam_hala, year == "2012")
+sam_hala18 <- subset(sam_hala, year == "2018")
+```
+```{r random resampling -> balanced design}
+table(sam_hala12$treatment_edge)
+table(sam_hala18$treatment_edge)
+table(sam_hala$treatment_edge)
+sam_hala$treatment_edge <- as.factor(sam_hala$treatment_edge)
+
+# Set the seed for reproducibility
+set.seed(123)
+
+## FOR 2012
+# Subsample 8 observations from the "FOR" category
+for_subset12 <- sam_hala12[sam_hala12$treatment_edge == "FOR", ]
+for_subset12 <- for_subset12[sample(nrow(for_subset12), 8), ]
+
+# Combine the subsampled "FOR" category with the other categories
+equal_sample12 <- rbind(
+  sam_hala12[sam_hala12$treatment_edge == "CUT", ],
+  sam_hala12[sam_hala12$treatment_edge == "EDG", ],
+  for_subset12
+)
+
+# Generate the table of sample sizes for each category
+table(equal_sample12$treatment_edge)
+sam_hala12 <- equal_sample12
+
+
+## FOR 2018
+# Subsample 8 observations from the "FOR" category
+for_subset18 <- sam_hala18[sam_hala18$treatment_edge == "FOR", ]
+for_subset18 <- for_subset18[sample(nrow(for_subset18), 8), ]
+
+# Combine the subsampled "FOR" category with the other categories
+equal_sample18 <- rbind(
+  sam_hala18[sam_hala18$treatment_edge == "CUT", ],
+  sam_hala18[sam_hala18$treatment_edge == "EDG", ],
+  for_subset18
+)
+
+# Generate the table of sample sizes for each category
+table(equal_sample18$treatment_edge)
+sam_hala18 <- equal_sample18
+
+sam_hala <- rbind(sam_hala12, sam_hala18)
 ```
 
 ```{r otu table}
@@ -305,8 +386,8 @@ verif_sum_hell <- colSums(otu_hellinger) %>% summary() %>% print() # # verificat
 
 ```{r otu rarefaction}
 # data properties BEFORE rarefaction
-rd_sps <- data.frame(rownames(otu_t), rowSums(otu_t)) # read sum per sample
-hist(rd_sps$rowSums.otu_t.)
+rd_sps <- data.frame(rownames(otu_001), rowSums(otu_001)) # read sum per sample
+hist(rd_sps$rowSums.otu_001.)
 
 # rarefaction based on all 
 otu_t0 <- t(otu_001)
@@ -424,7 +505,7 @@ physeq@sam_data$specification_value <- plyr::revalue(physeq@sam_data$specificati
 physeq@sam_data <- within(physeq@sam_data, treatment_edge[treatment_edge=="middle" & treatment=="forest"] <- "FOR") 
 
 physeq@sam_data$treatment_edge <- plyr::revalue(physeq@sam_data$treatment_edge,
-                           c("middle"="CC", 
+                           c("middle"="CUT", 
                              "edge"="EDG"))
 as.factor(physeq@sam_data$treatment_edge) %>% droplevels() %>% levels()
 
@@ -449,18 +530,19 @@ phy <- physeq
 ecm_phy <- subset_taxa(physeq, primary_lifestyle == "ectomycorrhizal") %>% 
 clean_pq(remove_empty_samples = FALSE, remove_empty_taxa = T, clean_samples_names = F)
 sapr_phy <- subset_taxa(physeq, primary_lifestyle == "saprotroph") %>% 
-clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = F)
-other_phy <- subset_taxa(physeq, (primary_lifestyle == "other_lifestyle" | is.na(primary_lifestyle)))  %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = F)
+clean_pq(remove_empty_samples = F,remove_empty_taxa = T, clean_samples_names = F)
+other_phy <- subset_taxa(physeq, (primary_lifestyle == "other_lifestyle" | is.na(primary_lifestyle)))  %>% clean_pq(remove_empty_samples = F,remove_empty_taxa = T, clean_samples_names = F)
 
-# per year
+# by year
 ecm_12 <- subset_samples(ecm_phy, ecm_phy@sam_data$year=="2012") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
 ecm_18 <- subset_samples(ecm_phy, ecm_phy@sam_data$year=="2018") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
 
 orient <- subset_samples(ecm_phy, ecm_phy@sam_data$specification_value %in% c("N", "S")) %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
 stream <- subset_samples(ecm_phy, ecm_phy@sam_data$specification_value %in% c("UP", "LO")) %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
 
-colnames(ecm_otusam)
+
 ecm_otusam <- data.frame(ecm_phy@sam_data, t(ecm_phy@otu_table))
+colnames(ecm_otusam)
 ```
 
 *VAR TRANSFO FOR ANALYSIS*
@@ -501,6 +583,8 @@ df_div <- data.frame(ecm_phy@sam_data, div, rich, even)
 colnames(df_div)
 df_div[, c(3:12)] <- lapply(df_div[, c(3:12)], as.factor) # tranforming columns into factors
 
+df_div12 <- subset(df_div, year == "2012")
+df_div18 <- subset(df_div, year == "2018")
 
 stde_ <- tapply(df_div$div, df_div$treatment_edge, stde) # if needed for tables
 median_ <- tapply(df_div$div,df_div$treatment_edge, median)
@@ -521,5 +605,39 @@ stde_str <- tapply(df_div_str$div, df_div_str$treatment_edge, stde) # if needed 
 median_str <- tapply(df_div_str$div,df_div_str$treatment_edge, median)
 min_str <- tapply(df_div_str$div,df_div_str$treatment_edge, min)
 max_str <- tapply(df_div_str$div,df_div_str$treatment_edge, max)
+```
+```{r relative proportion of ECM}
+
+rich_sapr <- vegan::specnumber(x = t(sapr_phy@otu_table))
+rich_sapr_df <- data.frame(rich_sapr, c("SAPR"))
+rich_ecm <- vegan::specnumber(x = t(ecm_phy@otu_table))
+rich_emc_df <- data.frame(rich_ecm, c("ECM"))
+
+# vertical join 
+df_div_ecm <- data.frame(phy@sam_data, rich_ecm, c("ECM"))
+colnames(df_div_ecm)
+colnames(df_div_ecm)[13] <- "richness"
+colnames(df_div_ecm)[14] <- "primary_lifestyle"
+df_div_sapr <- data.frame(phy@sam_data, rich_sapr, c("SAPR"))
+colnames(df_div_sapr)[13] <- "richness"
+colnames(df_div_sapr)[14] <- "primary_lifestyle"
+
+df_div_relat <- rbind(df_div_ecm, df_div_sapr)
+df_div_relat[, c(3:12)] <- lapply(df_div_relat[, c(3:12)], as.factor) # tranforming columns into factors
+
+
+## relative abundance
+# Agglomerate taxa at phylum level
+phy_relat <- tax_glom(phy, taxrank = "primary_lifestyle")
+# Calculate relative abundance
+phy_relat1 <- transform_sample_counts(phy_relat, function(x) x / sum(x) )
+# Subset object to only ECM
+phy_relat2 <- subset_taxa(phy_relat1, primary_lifestyle == "ectomycorrhizal")
+ecm_abun <- colSums(phy_relat2@otu_table) # total sum of ECM relative abundance / sample
+ecm_abun_df <- data.frame(phy_relat2@sam_data$sample_id, phy_relat2@sam_data$plot, phy_relat2@sam_data$year, phy_relat2@sam_data$treatment_edge, ecm_abun)
+colnames(ecm_abun_df) <- c("sample_id", "plot", "year", "treatment_edge", "ecm_abun")
+ecm_abun_df[, c(2:4)] <- lapply(ecm_abun_df[, c(2:4)], as.factor) # tranforming columns into factors
+ecm_abun_df12 <- subset(ecm_abun_df, year == "2012")
+ecm_abun_df18 <- subset(ecm_abun_df, year == "2018")
 ```
 
