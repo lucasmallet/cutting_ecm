@@ -1094,7 +1094,7 @@ hala_hill2
 hala_hill_treatment[[4]]
 hala_hill_treatment[[4]] # TukeyHSD test
 ```
-```{r barplot genus distribution}
+```{r barplot genus distribution - occurence}
 # tirage aleatoire pour nb d'echantillon (bootstrap ?) to compensate effect of Nforest 
 
 genus_nb_hala <- as.factor(ecm_phy@tax_table[,5]) %>% droplevels() %>% levels() %>% length() %>% print()
@@ -1135,6 +1135,48 @@ ecm_phy_ggplot2 <- ggplot(ecm_phy_ggplot2$data, aes(fill= fct_reorder(as.factor(
         legend.title = element_text(size = 11), #change legend title font size
         legend.text = element_text(size = 9)) #change legend text font size
 ecm_phy_ggplot2
+```
+```{r barplot genus distribution - proportion}
+# tirage aleatoire pour nb d'echantillon (bootstrap ?) to compensate effect of Nforest 
+
+genus_nb_hala <- as.factor(ecm_phy@tax_table[,5]) %>% droplevels() %>% levels() %>% length() %>% print()
+## OTU Genus count (0;1) by treatment
+ecm_phy_ggplot1_prop <- phyloseq::plot_bar(as_binary_otu_table(ecm_phy), x = "treatment_edge") 
+ecm_phy_ggplot1_prop <- ggplot(ecm_phy_ggplot1_prop$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x = factor(treatment_edge, levels = order_level), y = Abundance))+
+  geom_bar(stat = "identity", position = "fill") +
+  scale_fill_manual(values = funky(genus_nb_ecm))+
+  facet_grid(~year, scale="free")+
+  labs(title="OTU Genus presence-absence by distance from cut and by year")+
+  xlab("Distance from cut")+
+  ylab("OTU Genus count")+
+  guides(fill=guide_legend(title="Genus"))+
+  theme(axis.text.x = element_text(color="black", size=8, angle=20))+
+  theme(legend.key.size = unit(0.4, 'cm'), #change legend key size
+        legend.key.height = unit(0.4, 'cm'), #change legend key height
+        legend.key.width = unit(0.4, 'cm'), #change legend key width
+        legend.title = element_text(size = 11), #change legend title font size
+        legend.text = element_text(size = 9)) #change legend text font size
+ecm_phy_ggplot1_prop
+Ntreat12
+Ntreat18
+
+# OTU Genus abundance by treatment
+ecm_phy_ggplot2_prop <- phyloseq::plot_bar(ecm_phy, x = "treatment_edge") 
+ecm_phy_ggplot2_prop <- ggplot(ecm_phy_ggplot2_prop$data, aes(fill= fct_reorder(as.factor(Genus), Abundance), x = factor(treatment_edge, levels = order_level), y = Abundance))+
+  geom_bar(stat="identity", position = "fill")+
+  scale_fill_manual(values = funky(genus_nb_hala))+
+  facet_grid(~year, scale="free")+
+  labs(title="OTU Genus proportion by distance from cut and by year")+
+  xlab("Distance from cut")+
+  ylab("OTU Genus proportion")+
+  guides(fill=guide_legend(title="Genus"))+
+  theme(axis.text.x=element_text(color="black", size=8, angle=20))+
+  theme(legend.key.size = unit(0.4, 'cm'), #change legend key size
+        legend.key.height = unit(0.4, 'cm'), #change legend key height
+        legend.key.width = unit(0.4, 'cm'), #change legend key width
+        legend.title = element_text(size = 11), #change legend title font size
+        legend.text = element_text(size = 9)) #change legend text font size
+ecm_phy_ggplot2_prop
 ```
 ```{r barplot OTUs distribution}
 otu_nb_hala <- as.factor(ecm_phy@tax_table[,6]) %>% droplevels() %>% levels() %>% length()
@@ -2289,7 +2331,8 @@ hala5_ecm_ordi_phyl1
 
 # *7 EXPORT FILES*
 ```{r manuscript}
-setwd("H:/REDACTION/RESULTS/cutting_ecm/FIGURES")
+getwd()
+setwd("H:/REDACTION/FIGURES/FIGURES_R")
 
 # alpha diversity
 ## rarecurves
@@ -2308,6 +2351,9 @@ ggsave(plot = ecm_phy_ordi_mdsbray, filename = file.path("MDS_bc","MDS_bc.png"))
 ## genus distribution 
 ggsave(plot = ecm_phy_ggplot1, filename = file.path("barplot_genus_01","barplot_genus_01.png"))
 ggsave(plot = ecm_phy_ggplot2, filename = file.path("barplot_genus_reads","barplot_genus_reads.png"))
+
+ggsave(plot = ecm_phy_ggplot1_prop, filename = file.path("barplot_genus_01_prop","barplot_genus_01_prop.png"))
+ggsave(plot = ecm_phy_ggplot2_prop, filename = file.path("barplot_genus_reads_prop","barplot_genus_reads_prop.png"))
 ## heatmap  
 ggsave(plot = htmap_all, filename = file.path("heatmap","heatmap.png"))
 ```
