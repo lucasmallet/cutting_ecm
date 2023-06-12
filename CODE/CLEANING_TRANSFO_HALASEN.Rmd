@@ -45,6 +45,7 @@ library(glmmTMB) # Fit a generalized linear mixed model (GLMM) using Template Mo
 library(gtsummary)
 library(pairwiseAdonis) # pari-wise analysis for PermANOVAs 
 library(gplots)
+library(FUNGuildR)
 ```
 ```{r color palette}
 pals::pal.bands(alphabet, alphabet2, cols25, glasbey, kelly, polychrome, 
@@ -140,12 +141,13 @@ rownames(raw_clust) <- raw_clust$Cluster_ID # attributing each row to their clus
 
 order <- raw_clust$Cluster_ID 
 order <- gsub('c','', raw_clust$Cluster_ID) # creating a numerical vector order (by deleting the "c"), so we can arrange later by number
+order <- as.numeric(order)
 raw_clust <- data.frame(cbind(order, raw_clust)) # binding string and df
 raw_clust[, "order"] <- as.numeric(raw_clust[, "order"]) # transf. in num. variable
 
 # subsetting fungi X non-fungi
-raw_f_clust <- subset(raw_clust, !grepl("PLANT | NF", raw_clust[, 5]))
-raw_nf_clust <- subset(raw_clust, grepl("PLANT | NF", raw_clust[, 5]))
+raw_f_clust <- subset(raw_clust, !grepl("PLANT|NF", raw_clust[, 5]))
+raw_nf_clust <- subset(raw_clust, grepl("PLANT|NF", raw_clust[, 5]))
 
 # taxonomic and ecological traits table
 # only the 1st 1000 clusters 
@@ -156,68 +158,69 @@ taxeco_id[, c(3:length(taxeco_id))] <- lapply(taxeco_id[, c(3:length(taxeco_id))
 rownames(taxeco_id) <- taxeco_id$Cluster_ID # rownames of corresponding clusters
 ```
 
-```{r taxtable manipulation }
-taxeco_0 <- subset(taxeco_id[, c(3:length(taxeco_id))]) # supressing cluster_id, cluster_size 
-taxeco2 <- subset(taxeco_id[, c(3:length(taxeco_id))]) 
-taxeco2 <- matrix(as.character(unlist(taxeco2)),
-              ncol = ncol(taxeco2),
-              nrow = nrow(taxeco2)) # creating matrix 
+```{r test funguild}
+attrib_raw <- funguild_assign(raw_clust, tax_col = "Genus")
+# could be interesting 
+```
 
-# creating df of MANUAL ID fungi =/= from AUTO ID
-## we are going to use the fact that taxeco df. is only composed of manual verification to discriminate OTUs
 
-id_taxeco <- raw_f_clust %>%
-  filter(Cluster_ID %in% taxeco_id$Cluster_ID) %>% # keeping cluster_ID form "raw_f_clust" found in "taxeco_id" (verified and manually IDed OTUs) 
-  arrange(as.numeric(order)) # ordering by name (from "raw_cluster")
-id_taxeco <- cbind("MANUAL_ID", id_taxeco)
+```{r tax-eco table manipulation }
+taxeco1 <- subset(taxeco_id[,c(3:length(taxeco_id)),]) 
+taxeco1 <- matrix(as.character(unlist(taxeco1)),
+              ncol = ncol(taxeco1),
+              nrow = nrow(taxeco1))
 
-unid_taxeco <- raw_f_clust %>%
+id_tax <- raw_f_clust %>%
+  filter(Cluster_ID %in% taxeco_id$Cluster_ID) %>%
+  arrange(order) # filtering taxtable identified manually
+id_tax <- cbind("MANUAL_ID", id_tax)
+
+unid_tax <- raw_f_clust %>%
   filter(!Cluster_ID %in% taxeco_id$Cluster_ID) %>%
-  arrange(as.numeric(order)) # same as previously but with unverified / unidentified fungi
+  arrange(order) # filtering taxtable not identified 
 
-# re-merging after attribution of the ID_TYPE 
-taxeco_f <- dplyr::bind_rows(id_taxeco, unid_taxeco)
-colnames(taxeco_f)[1] <- "ID_TYPE"
-taxeco_f$ID_TYPE[is.na(taxeco_f$ID_TYPE)] <- "AUTO_ID" 
+tax_f <- dplyr::bind_rows(id_tax, unid_tax)
+colnames(tax_f)[1] <- "ID_TYPE"
+tax_f$ID_TYPE[is.na(tax_f$ID_TYPE)] <- "AUTO_ID" 
 
 taxeco_id <- cbind("MANUAL_ID", taxeco_id)
 colnames(taxeco_id)[1] <- "ID_TYPE"
 
-# not same length row between id_taxeco (998) and taxeco (999): not normal, can cause offset
-match_id <- taxeco_id$Cluster_ID %in% id_taxeco$Cluster_ID
+# not same length row between id_tax (998) and taxeco (999): not normal, can cause offset
+match_id <- taxeco_id$Cluster_ID %in% id_tax$Cluster_ID
 as.factor(match_id) %>% 
   levels()
 which(match_id == "FALSE", arr.ind = T) # mismatch at row 240
 
 taxeco_id <- taxeco_id[-240,]
 
-match_id <- taxeco_id$Cluster_ID %in% id_taxeco$Cluster_ID # checking if resolved
+match_id <- taxeco_id$Cluster_ID %in% id_tax$Cluster_ID # checking if resolved
 as.factor(match_id) %>% 
   levels()
 which(match_id == "FALSE", arr.ind = T) # good
 
 ###
-taxeco_id$Cluster_Size <- id_taxeco$Cluster_Size # reattributing the proper cluster_size values
+taxeco_id$Cluster_Size <- id_tax$Cluster_Size # reattributing the proper cluster_size values
 
-taxeco1 <- merge(taxeco_f, taxeco_id, all = T) %>%
-  arrange(order) # merging taxeco and idtaxeco 
+taxeco2 <- merge(tax_f, taxeco_id, all = T) %>%
+  arrange(order) # merging taxeco and idtaxeco  
+## enable to merge the "tax_f" where all fungi clusters are present with their reference from SCATA with "taxeco_id" the dataset manually IDed + FunGuild attribution. 
 
-rownames(taxeco1) <- taxeco1$Cluster_ID
+rownames(taxeco2) <- taxeco2$Cluster_ID
 
 # putting reference of AUTO_ID in OTU_ID
-which(taxeco1[,"ID_TYPE"] == "MANUAL_ID") %>% length() # finding the rows NOT concerned
-taxeco1$OTU_ID <- as.character(taxeco1$OTU_ID) # putting as character for next line
-taxeco1$OTU_ID <- c(taxeco1$OTU_ID[1:998],  taxeco1$Reference[999:length(taxeco1$Reference)]) # merging reference and otu_id 
+which(taxeco2[,"ID_TYPE"] == "MANUAL_ID") %>% length() # finding the rows NOT concerned
+taxeco2$OTU_ID <- as.character(taxeco2$OTU_ID) # putting as character for next line
+taxeco2$OTU_ID <- c(taxeco2$OTU_ID[1:998],  taxeco2$Reference[999:length(taxeco2$Reference)]) # merging reference and otu_id 
   
 # subsetting interesting variables
-colnames(taxeco1)
-taxeco <- taxeco1[, c(17:24,1)]
+colnames(taxeco2)
+taxeco <- taxeco2[, c(17:24,1)]
 taxeco <- sapply(taxeco, as.character) 
-rownames(taxeco) <- rownames(taxeco1) # cluster name in row
+rownames(taxeco) <- rownames(taxeco2) # cluster name in row
 colnames(taxeco)
 colnames(taxeco)[8] <- "Fruitbody"
 ```
-
 ```{r sample data}
 # sample data
 sam <- read.table("sample_table.txt",header=T,sep="\t",na.strings = T) 
@@ -626,7 +629,7 @@ div <- vegan::diversity(x = t(ecm_phy@otu_table),
                              index = "shannon")
 rich <- vegan::specnumber(x= t(ecm_phy@otu_table))
 even <- div/ log(rich) # Pielou's evenness # tend to 1 = more evenly distributed 
-taxeco_f$ID_TYPE[is.na(taxeco_f$ID_TYPE)] <- "AUTO_ID" 
+tax_f$ID_TYPE[is.na(tax_f$ID_TYPE)] <- "AUTO_ID" 
 even[even == 0] <- even["NaN"]
 df_div <- data.frame(ecm_phy@sam_data, div, rich, even) 
 colnames(df_div)
