@@ -43,6 +43,9 @@ library(e1071)
 library(phylosmith)
 library(brms)
 library(glmmTMB)
+library(gtsummary)
+library(pairwiseAdonis)
+library(gplots)
 ```
 ```{r color palette}
 pals::pal.bands(alphabet, alphabet2, cols25, glasbey, kelly, polychrome, 
@@ -82,30 +85,94 @@ if (x < 0) {
   print("Zero")
 }
 
+round_df <- function(x, digits) {
+    # round all numeric variables
+    # x: data frame 
+    # digits: number of digits to round
+    numeric_columns <- sapply(x, mode) == 'numeric'
+    x[numeric_columns] <-  round(x[numeric_columns], digits)
+    x
+}
+
 # if() is used for a single value
 # to check for a vector: use ifelse instead
 # can use ifelse(test, yes, (test, yes, no)) nested 
 
+phyloseq_ntaxa_by_tax <- function(physeq, TaxRank = "Phylum", relative = F, add_meta_data = T){
+
+    ## Melt phyloseq data object into large data.frame
+    mm <- phyloseq::psmelt(physeq)
+
+    ## Count number of OTUs for each sample
+    count_otus <- function(z, TaxRank = TaxRank, relative = relative){
+
+      ## Remove zero-OTUs
+      zero_otu <- z$Abundance > 0
+      if(any(zero_otu)){ z <- z[zero_otu, ] }
+
+      ## Count number of OTUs per taxonomic rank selected
+      rez <- as.data.frame(table(z[, TaxRank]), stringsAsFactors = F)
+      colnames(rez) <- c(TaxRank, "N.OTU")
+
+      ## Transform to relative abundance
+      if(relative == TRUE){
+        rez$N.OTU <- with(rez, N.OTU / sum(N.OTU) )
+      }
+
+      return(rez)
+    }
+
+    ## Count number of OTUs for each sample
+    res <- plyr::ddply(.data = mm, .variables = "Sample", .fun = count_otus, TaxRank = TaxRank, relative = relative)
+
+    ## Add meta-data
+    if(add_meta_data == TRUE){
+      if(!is.null(phyloseq::sample_data(physeq, errorIfNULL = FALSE))){  # add only if metadata is present
+        ## Extract meta-data
+        metad <- data.frame(Sample = phyloseq::sample_names(physeq), phyloseq::sample_data(physeq))
+      
+        ## Extract column names
+        # main_cols <- c("OTU", "Sample", "Abundance", rank_names(x))          # 'standard' columns
+        # meta_cols <- colnames(mm)[ which(!colnames(mm) %in% main_cols) ]     # meta-data columns
+        main_cols <- c("Sample")                                               # 'standard' columns
+        meta_cols <- colnames(metad)[ which(!colnames(metad) %in% main_cols) ] # meta-data columns
+      
+        res <- cbind(res, metad[match(x = res$Sample, table = metad$Sample), meta_cols] )
+      }
+    }
+
+    rownames(res) <- NULL
+    return(res)
+}
+
 ```
 ```{r objects}
-coltreatment <- c("EDG" = "khaki2",
-                  "CUT" = "coral2",
-                  "FOR" = "springgreen4") # palette for treatment
+coltreatment <- c("FE" = "khaki2",
+                  "SC" = "coral2",
+                  "FC" = "springgreen4") # palette for treatment
 
-coltreatment_raref <- c("EDG" = "orange",
-                                "CUT" = "red3",
-                                "FOR" = "springgreen4")
+coltreatment_raref <- c("FE" = "orange",
+                                "SC" = "red3",
+                                "FC" = "springgreen4")
 
-order_level <- c("FOR", "EDG", "CUT") # ordination of factors (aes = factor(x, levels = order_level))
-order_level_mg <- c("2012FOR", "2012EDG", "2012CUT", "2018FOR", "2018EDG", "2018CUT")
-order_level_simpl <- c("FOR_12", "EDG_12", "CUT_12", "FOR_18", "EDG_18", "CUT_18")
+order_level <- c("FC", "FE", "SC") # ordination of factors (aes = factor(x, levels = order_level))
+order_level_mg <- c("2012FC", "2012FE", "2012SC", "2018FC", "2018FE", "2018SC")
+order_level_simpl <- c("FC_12", "FE_12", "SC_12", "FC_18", "FE_18", "SC_18")
+
+plot_list <- as.factor(ecm_phy@sam_data$plot) %>% droplevels() %>% levels() %>% str_sort(numeric = T) %>% print() # list of plots
+
 ```
 
 *DATA IMPORTATION AND MODIF*
 
 ```{r raw_data}
-setwd("H:/REDACTION/RESULTS/cutting_ecm/TRANSF_DATA2") 
+setwd("C:/Users/Utilisateur/OneDrive/STAGE-2023_SUEDE/cutting_ecm-main_branch/TRANSF_DATA2") 
 #data run
+fruit <- read.table("fruit.txt", header = T, sep="\t",na.strings=T,dec=".")
+rownames(fruit) <- fruit$X
+fruit <- fruit[, -1]
+colnames(fruit) <- gsub("X", "", colnames(fruit))
+
 run_data <- read.table("run_data.txt", header=T, sep="\t",na.strings=T,dec=".")
 colnames(run_data)
 
@@ -114,7 +181,7 @@ raw_clust <- read.table("raw_clusters.txt",header=T,sep="\t",na.strings=T,dec=".
   arrange(desc(Cluster_Size)) # importing and arrange by decreasing cluster size
 raw_clust[raw_clust==""] <- NA # putting NA when empty
 raw_clust[,4] <- as.character(raw_clust[,4]) # reference as.character
-raw_clust$Cluster_ID <- gsub('scata5670_','c',raw_clust$Cluster_ID) # replace character oCUTurence in all cells
+raw_clust$Cluster_ID <- gsub('scata5670_','c',raw_clust$Cluster_ID) # replace character oSCurence in all cells
 rownames(raw_clust) <- raw_clust$Cluster_ID
 order <- raw_clust$Cluster_ID 
 order <- gsub('c','',raw_clust$Cluster_ID) # creating a vector order so we can arrange later
@@ -201,8 +268,10 @@ sam[sam==""] <- NA # filling the blanck by NAs
 rownames(sam) <- sam$sample_id # after transposing, resolving pb with headers
 
 # subsetting design samples per site 
-sam_hala <- subset(sam, sam$site == "Halasen") # 61 samples
+sam_hala <- subset(sam, sam$site == "Halasen") # 61 samples # 64 initially!
+# missing 2 SC + 1 FC
 sam_controls_na <- filter(sam, !site %in% c("Halasen", "Fangamon", "Halasen_p_5")) # 19 samples (or controls)
+sam_all <- filter(sam, site %in% c("Halasen", "Fangamon", "Halasen_p_5"))
 ```
 ```{r changing levels of factor for sam}
 factor(sam_hala$specification) %>% levels()
@@ -224,11 +293,11 @@ sam_hala$specification_value <- plyr::revalue(sam_hala$specification,
                              "midle"= NA,
                              "middle"= NA))
 
-sam_hala <- within(sam_hala, treatment_edge[treatment_edge=="middle" & treatment=="forest"] <- "FOR") 
+sam_hala <- within(sam_hala, treatment_edge[treatment_edge=="middle" & treatment=="forest"] <- "FC") 
 
 sam_hala$treatment_edge <- plyr::revalue(sam_hala$treatment_edge,
-                           c("middle"="CUT", 
-                             "edge"="EDG"))
+                           c("middle"="SC", 
+                             "edge"="FE"))
 as.factor(sam_hala$treatment_edge) %>% droplevels() %>% levels()
 
 sam_hala12 <- subset(sam_hala, year == "2012")
@@ -243,15 +312,15 @@ sam_hala$treatment_edge <- as.factor(sam_hala$treatment_edge)
 # Set the seed for reproducibility
 set.seed(123)
 
-## FOR 2012
-# Subsample 8 observations from the "FOR" category
-for_subset12 <- sam_hala12[sam_hala12$treatment_edge == "FOR", ]
+## FC 2012
+# Subsample 8 observations from the "FC" category
+for_subset12 <- sam_hala12[sam_hala12$treatment_edge == "FC", ]
 for_subset12 <- for_subset12[sample(nrow(for_subset12), 8), ]
 
-# Combine the subsampled "FOR" category with the other categories
+# Combine the subsampled "FC" category with the other categories
 equal_sample12 <- rbind(
-  sam_hala12[sam_hala12$treatment_edge == "CUT", ],
-  sam_hala12[sam_hala12$treatment_edge == "EDG", ],
+  sam_hala12[sam_hala12$treatment_edge == "SC", ],
+  sam_hala12[sam_hala12$treatment_edge == "FE", ],
   for_subset12
 )
 
@@ -260,15 +329,15 @@ table(equal_sample12$treatment_edge)
 sam_hala12 <- equal_sample12
 
 
-## FOR 2018
-# Subsample 8 observations from the "FOR" category
-for_subset18 <- sam_hala18[sam_hala18$treatment_edge == "FOR", ]
+## FC 2018
+# Subsample 8 observations from the "FC" category
+for_subset18 <- sam_hala18[sam_hala18$treatment_edge == "FC", ]
 for_subset18 <- for_subset18[sample(nrow(for_subset18), 8), ]
 
-# Combine the subsampled "FOR" category with the other categories
+# Combine the subsampled "FC" category with the other categories
 equal_sample18 <- rbind(
-  sam_hala18[sam_hala18$treatment_edge == "CUT", ],
-  sam_hala18[sam_hala18$treatment_edge == "EDG", ],
+  sam_hala18[sam_hala18$treatment_edge == "SC", ],
+  sam_hala18[sam_hala18$treatment_edge == "FE", ],
   for_subset18
 )
 
@@ -303,25 +372,33 @@ ncol(otu)
 
 # controls
 not_samples_kept <- c("sITS-standard2", "sITS-standard1", "sPCR_neg_1", "sPCR_neg_2", "sQ2") # cf MM_RESULTS.Rmd ```{r DESIGN SAMPLES}  to understand how they are found 
-# samples with 0:  "s49", "s97"
 
-samples_kept_pq <- otu[, colnames(otu) %in% not_samples_kept] 
-clusters_in_controls <- which(samples_kept_pq >0, arr.ind = T) %>% 
-  rownames() %>% as.factor() %>% levels() %>% print() # 13 clusters found in controls samples
-otu_samples_out <- otu[, !(colnames(otu) %in% not_samples_kept)] # suppressing these samples from otu matrix
+samples_kept_pq <- otu[, colnames(otu) %in% not_samples_kept] # table of control samples and clusters in row. we want to identity and deleted clusters with reads in these. (potential contaminations)
+
+clusters_in_controls <- which(samples_kept_pq > 0, arr.ind = T) %>% 
+rownames() %>%  as.factor() %>% levels() %>% print() # 12 clusters found in controls samples
+otu_samples_out <- otu[!(rownames(otu) %in% not_samples_kept),] # suppressing these samples from otu matrix
 ncol(otu_samples_out)
-nrow(otu_samples_out)
+nrow(otu_samples_out) 
 
 # excluding NF clusters to rarefy only with fungi
-otu_fungi <- otu_samples_out %>%
+otu_fungi_all <- otu_samples_out %>%
   filter(rownames(otu_samples_out) %in% rownames(taxeco)) # taxeco has only fungi clusters
-ncol(otu_fungi)
-nrow(otu_fungi)
+ncol(otu_fungi_all)
+nrow(otu_fungi_all)
 
 # creating otu_fungi_hala only for hala to rarefy on the unique same site
-otu_fungi_t0 <- t(otu_fungi) %>% as.data.frame()
+otu_fungi_t0 <- t(otu_fungi_all) %>% as.data.frame()
 otu_fungi_t <- otu_fungi_t0 %>%
   filter(rownames(otu_fungi_t0) %in% rownames(sam_hala)) 
+
+otu_not_in_hala <- which(colSums(otu_fungi_t) == 0) # 1182 clusters
+otu_fungi_t <- otu_fungi_t[, -otu_not_in_hala]
+
+ncol(otu_fungi_t)
+nrow(otu_fungi_t)
+nrow(sam_hala)
+
 otu_fungi <- t(otu_fungi_t) # transposing back
 ncol(otu_fungi)
 nrow(otu_fungi) # 3493 - 3411 = 82 clusters suppressed
@@ -348,15 +425,15 @@ colnames(otu1) <- colnames(otu_fungi)
 otu_relative <- prop.table(otu1, margin = 2) # margin = 2 -> column sum and relative abundances
 verif_sum <- colSums(otu_relative) %>% summary() %>% print() # # verification: ok if 1 and some NAs
 otu_001_transf <- ifelse(otu_relative>0.01,otu1,0) # creating a new matrix where <1% reads are transformed into 0
-otu_001 <- subset(otu_001_transf, !rowSums(otu_001_transf)==0)
+otu_001 <- subset(otu_001_transf, !rowSums(otu_001_transf) == 0)
 
 nrow(otu_001_transf)
 nrow(otu_001)
-nrow(otu_001_transf) - nrow(otu_001) # 2822 clusters with relative abundance < 1% = suppressed -> 589 conserved 
+nrow(otu_001_transf) - nrow(otu_001) # 1930 clusters with relative abundance < 1% = suppressed -> 299 conserved 
 
 otu_notrarefied <- otu_001
 
-# data properties BEFORE - AFTER suppresion of <1%
+# data properties BEFCE - AFTER suppresion of <1%
 rd_sps_inf1 <- data.frame(colnames(otu1), colSums(otu1), colSums(otu_001)) # read sum per sample
 colnames(rd_sps_inf1) <- c("sample_id", "sumreads_otu1", "sumreads_otu_001")
 summary(colSums(otu1))
@@ -384,7 +461,7 @@ verif_sum_hell <- colSums(otu_hellinger) %>% summary() %>% print() # # verificat
 ```
 
 ```{r otu rarefaction}
-# data properties BEFORE rarefaction
+# data properties BEFCE rarefaction
 rd_sps <- data.frame(rownames(otu_001), rowSums(otu_001)) # read sum per sample
 hist(rd_sps$rowSums.otu_001.)
 
@@ -405,7 +482,7 @@ otu_rarefied <- matrix(as.numeric(unlist(otu_rarefied)),
 rownames(otu_rarefied) <- rownames(otu_001)
 colnames(otu_rarefied) <- colnames(otu_001)
 
-# data properties BEFORE - AFTER rarefaction
+# data properties BEFCE - AFTER rarefaction
 summary(colSums(otu_001))
 rd_sps_raref <- data.frame(colnames(otu_001), colSums(otu_001), colSums(otu_rarefied)) # read sum per sample
 colnames(rd_sps_raref) <- c("sample_id", "sumreads_notrarefied", "sumreads_otu_rarefied")
@@ -435,7 +512,7 @@ sam_phy <- sample_data(sam)
 
 # general physeq object
 physeq <- phyloseq(otu_phy_rarefied,taxeco_phy,sam_phy) %>% 
-clean_pq(remove_empty_samples = FALSE,remove_empty_taxa = T, clean_samples_names = T)
+clean_pq(remove_empty_samples = FALSE,remove_empty_taxa = T, clean_samples_names = FALSE)
 physeq_rarefied <- physeq
 physeq_notrarefied <- phyloseq(otu_phy_notrarefied,taxeco_phy,sam_phy) %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
 # 2822 taxa removed from the <1% relative abundance suppresion. 
@@ -501,11 +578,11 @@ physeq@sam_data$specification_value <- plyr::revalue(physeq@sam_data$specificati
                              "midle"= NA,
                              "middle"= NA))
 
-physeq@sam_data <- within(physeq@sam_data, treatment_edge[treatment_edge=="middle" & treatment=="forest"] <- "FOR") 
+physeq@sam_data <- within(physeq@sam_data, treatment_edge[treatment_edge=="middle" & treatment=="forest"] <- "FC") 
 
 physeq@sam_data$treatment_edge <- plyr::revalue(physeq@sam_data$treatment_edge,
-                           c("middle"="CUT", 
-                             "edge"="EDG"))
+                           c("middle"="SC", 
+                             "edge"="FE"))
 as.factor(physeq@sam_data$treatment_edge) %>% droplevels() %>% levels()
 
 # variables stream (upper or lower) and orientation (north or south)
@@ -527,24 +604,38 @@ phy <- physeq
 
 # guilds of whole dataset
 ecm_phy <- subset_taxa(physeq, primary_lifestyle == "ectomycorrhizal") %>% 
-clean_pq(remove_empty_samples = FALSE, remove_empty_taxa = T, clean_samples_names = F)
+clean_pq(remove_empty_samples = FALSE, remove_empty_taxa = T, clean_samples_names = FALSE)
 sapr_phy <- subset_taxa(physeq, primary_lifestyle == "saprotroph") %>% 
 clean_pq(remove_empty_samples = F,remove_empty_taxa = T, clean_samples_names = F)
 other_phy <- subset_taxa(physeq, (primary_lifestyle == "other_lifestyle" | is.na(primary_lifestyle)))  %>% clean_pq(remove_empty_samples = F,remove_empty_taxa = T, clean_samples_names = F)
 
 # by year
-ecm_12 <- subset_samples(ecm_phy, ecm_phy@sam_data$year=="2012") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
-ecm_18 <- subset_samples(ecm_phy, ecm_phy@sam_data$year=="2018") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
+ecm_12 <- subset_samples(ecm_phy, ecm_phy@sam_data$year=="2012") %>% clean_pq(remove_empty_samples = FALSE,remove_empty_taxa = T, clean_samples_names = FALSE)
+ecm_18 <- subset_samples(ecm_phy, ecm_phy@sam_data$year=="2018") %>% clean_pq(remove_empty_samples = FALSE,remove_empty_taxa = T, clean_samples_names = FALSE)
 
 orient <- subset_samples(ecm_phy, ecm_phy@sam_data$specification_value %in% c("N", "S")) %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
 stream <- subset_samples(ecm_phy, ecm_phy@sam_data$specification_value %in% c("UP", "LO")) %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
 
+# by treatment
+ecm_for <- subset_samples(ecm_phy, ecm_phy@sam_data$treatment_edge == "FC") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
 
-ecm_otusam <- data.frame(ecm_phy@sam_data, t(ecm_phy@otu_table))
-colnames(ecm_otusam)
+ecm_edg <- subset_samples(ecm_phy, ecm_phy@sam_data$treatment_edge == "FE") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
+
+ecm_cut <- subset_samples(ecm_phy, ecm_phy@sam_data$treatment_edge == "SC") %>% clean_pq(remove_empty_samples = T,remove_empty_taxa = T, clean_samples_names = T)
+
+fruit12 <- fruit[, grep("2012", colnames(fruit))]
+fruit18 <- fruit[, grep("2018", colnames(fruit))]
+# changing 0 to NAs for chi test
+fruit12[rowSums(fruit12) == 0, ] <- NA
+fruit18 <- fruit18[!rowSums(fruit18) == 0, ]
+
+# theorical values
+## 
+fruit12_th <- ifelse(fruit12 >= 0, 33.33333, 0)
+fruit18_th <- ifelse(fruit18 >= 0, 33.33333, 0)
 ```
 
-*VAR TRANSFO FOR ANALYSIS*
+*VAR TRANSFO FC ANALYSIS*
 ```{r transfo variables}
 sam <- lapply(physeq@sam_data, as.factor) %>% as.data.frame()
 sample_data(physeq)$year_factor <- as.factor(sample_data(physeq)$year)
@@ -636,7 +727,119 @@ ecm_abun <- colSums(phy_relat2@otu_table) # total sum of ECM relative abundance 
 ecm_abun_df <- data.frame(phy_relat2@sam_data$sample_id, phy_relat2@sam_data$plot, phy_relat2@sam_data$year, phy_relat2@sam_data$treatment_edge, ecm_abun)
 colnames(ecm_abun_df) <- c("sample_id", "plot", "year", "treatment_edge", "ecm_abun")
 ecm_abun_df[, c(2:4)] <- lapply(ecm_abun_df[, c(2:4)], as.factor) # tranforming columns into factors
+ecm_abun_df$ecm_abun <- pmax(ecm_abun_df$ecm_abun, 0.001) # adding a small constant to every values to respect beta_family requirements
 ecm_abun_df12 <- subset(ecm_abun_df, year == "2012")
 ecm_abun_df18 <- subset(ecm_abun_df, year == "2018")
+```
+
+```{r genus count}
+ecm_otusam <- data.frame(ecm_phy@sam_data, t(ecm_phy@otu_table))
+ecm_otusam12 <- subset(ecm_otusam, ecm_otusam$year == "2012")
+ecm_otusam18 <- subset(ecm_otusam, ecm_otusam$year == "2018")
+colnames(ecm_otusam)
+ecm_phy1 <- ecm_phy
+ecm_phy1 <- as_binary_otu_table(ecm_phy1)
+rownames(ecm_phy1@otu_table) <- ecm_phy1@tax_table[, "Genus"]
+osam <- data.frame(ecm_phy1@sam_data, t(ecm_phy1@otu_table))
+
+# count 
+colnames(osam)
+
+# count each occurence by group and year
+osam_count <- osam[, c(5, 9 ,14:length(colnames(osam)))] %>% 
+  group_by(treatment_edge, year) %>% 
+  summarise_all(sum)
+
+# order df 
+osam_count <- osam_count[
+  with(osam_count, order(year, rev(treatment_edge))),
+] %>% as.data.frame()
+
+# adding % 
+## calc N
+table12 <- table(ecm_12@sam_data$treatment_edge, ecm_12@sam_data$plot) %>% as.data.frame.matrix()
+table12 <- table12[, plot_list] %>% print()
+
+table18 <- table(ecm_18@sam_data$treatment_edge, ecm_18@sam_data$plot) %>% as.data.frame.matrix()
+table18 <- table18[, plot_list] %>% print()
+Ntreat12 <- rowSums(table12) %>% print() 
+Ntreat18 <- rowSums(table18) %>% print()
+
+Nt12_df <- data.frame(treatment_edge = c("SC", "FE", "FC"),year = "2012",  N = Ntreat12)
+Nt18_df <- data.frame(treatment_edge = c("SC", "FE", "FC"), year = "2018", N = Ntreat18)
+N_df <- rbind(Nt12_df, Nt18_df)
+N_df <- N_df[
+  with(N_df, order(year, rev(treatment_edge))),
+] %>% as.data.frame() # N is now order as the same as osam_count treatment + year
+
+# we can merge column to osam_count_df 
+
+# adding N for each group
+osam_count_df <- data.frame(N = N_df$N, osam_count)
+osam12 <- subset(osam_count_df, year == "2012")
+osam18 <- subset(osam_count_df, year == "2018")
+
+prop_fun <- function(x) {
+  x <- x / osam_count_df$N * 100
+}
+
+sum(col(osam_count_df))
+# Define the list of column names to calculate proportions for
+colnames(osam_count_df)
+col_names_prop <- colnames(osam_count_df[, c(4: length(colnames(osam_count_df)))]) # Add all relevant column names here
+
+# Apply the calc_prop() function to all columns and get a list of proportion vectors
+prop_list <- lapply(osam_count_df[, col_names_prop], prop_fun)
+
+# Convert the list of proportion vectors to a data frame
+pourc_genusdf <- as.data.frame(prop_list)
+
+# Rename the columns of the data frame to match the original column names
+colnames(pourc_genusdf) <- col_names_prop
+var11 <- as.character(get_variable(pourc_genusdf, "year"))
+var22 <- as.character(get_variable(pourc_genusdf, "treatment_edge"))
+yr_treat_genus <- mapply(paste0, var11, var22, collapse = "_")
+colnames(osam_count_df)
+rownames(pourc_genusdf) <- yr_treat_genus
+pourc_genusdf1 <- cbind(yr_treat_genus, pourc_genusdf) %>% round_df(1) # rounding
+pourc_genusdf12 <- pourc_genusdf1[c(1:3), ] # subsets
+pourc_genusdf18 <- pourc_genusdf1[c(4:6), ]
+
+
+# remove 0 samples:
+pourc_genusdf12_otu <- subset(pourc_genusdf12[c(2:ncol(pourc_genusdf12))], select = -which(colSums(pourc_genusdf12[c(2:ncol(pourc_genusdf12))]) == 0))
+
+pourc_genusdf12 <- cbind(yr_treat_genus = yr_treat_genus[c(1:3)], pourc_genusdf12_otu)
+
+pourc_genusdf18_otu <- subset(pourc_genusdf18[c(2:ncol(pourc_genusdf18))], select = -which(colSums(pourc_genusdf18[c(2:ncol(pourc_genusdf18))]) == 0))
+
+pourc_genusdf18 <- cbind(yr_treat_genus = yr_treat_genus[c(4:6)], pourc_genusdf18_otu)
+
+pourc_genusdf12$yr_treat_genus <- gsub("2012", "", pourc_genusdf12$yr_treat_genus) # remove now 2012
+pourc_genusdf18$yr_treat_genus <- gsub("2018", "", pourc_genusdf18$yr_treat_genus) # remove now 2018
+###
+pourc_genusdf12b <- pourc_genusdf12 %>%
+  # convert data to long format
+  gather(key = "Genus", value = "pourc", -yr_treat_genus) %>%
+  # rename columns
+  setNames(c("yr_treat_genus", "Genus", "pourc")) %>%
+  # convert yr_treat_genus to factor
+  mutate(yr_treat_genus = factor(yr_treat_genus)) %>%
+  # convert pourc to numeric (also converts '-' to NA, gives a warning)
+  mutate(pourc = as.numeric(pourc))
+
+pourc_genusdf18b <- pourc_genusdf18 %>%
+  # convert data to long format
+  gather(key = "Genus", value = "pourc", -yr_treat_genus) %>%
+  # rename columns
+  setNames(c("yr_treat_genus", "Genus", "pourc")) %>%
+  # convert yr_treat_genus to factor
+  mutate(yr_treat_genus = factor(yr_treat_genus)) %>%
+  # convert pourc to numeric (also converts '-' to NA, gives a warning)
+  mutate(pourc = as.numeric(pourc))
+```
+
+```{r simple tables}
+otusam
 ```
 

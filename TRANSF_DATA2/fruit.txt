@@ -1,0 +1,7 @@
+	2012_FC	2012_FE	2012_SC	2018_FC	2018_FE	2018_SC
+Agaricoid	48	63	20	67	8	28
+Apothecium	1	1	2	0	20	24
+Clavarioid	0	5	8	0	0	0
+Corticioid	45	22	56	30	52	37
+Gasteroid	2	8	10	3	20	11
+NA	4	1	4	0	0	0
