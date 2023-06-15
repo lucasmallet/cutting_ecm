@@ -163,13 +163,9 @@ attrib_raw <- funguild_assign(raw_clust, tax_col = "Genus")
 # could be interesting 
 ```
 
-
 ```{r tax-eco table manipulation }
-taxeco1 <- subset(taxeco_id[,c(3:length(taxeco_id)),]) 
-taxeco1 <- matrix(as.character(unlist(taxeco1)),
-              ncol = ncol(taxeco1),
-              nrow = nrow(taxeco1))
-
+# creating the variable "ID_TYPE" (auto or manual) for the OTU identification. 
+## for this, we check the match between the OTU_ID raw_f_clust (ie the whole dataset) and taxeco (ie manually reviewed table)
 id_tax <- raw_f_clust %>%
   filter(Cluster_ID %in% taxeco_id$Cluster_ID) %>%
   arrange(order) # filtering taxtable identified manually
@@ -179,47 +175,50 @@ unid_tax <- raw_f_clust %>%
   filter(!Cluster_ID %in% taxeco_id$Cluster_ID) %>%
   arrange(order) # filtering taxtable not identified 
 
-tax_f <- dplyr::bind_rows(id_tax, unid_tax)
+tax_f <- dplyr::bind_rows(id_tax, unid_tax) # merging "id_tax" and "unid_tax" together
 colnames(tax_f)[1] <- "ID_TYPE"
-tax_f$ID_TYPE[is.na(tax_f$ID_TYPE)] <- "AUTO_ID" 
+tax_f$ID_TYPE[is.na(tax_f$ID_TYPE)] <- "AUTO_ID" # replacing the "ID_TYPE" column with new value
 
-taxeco_id <- cbind("MANUAL_ID", taxeco_id)
+taxeco_id <- cbind("MANUAL_ID", taxeco_id) 
 colnames(taxeco_id)[1] <- "ID_TYPE"
 
-# not same length row between id_tax (998) and taxeco (999): not normal, can cause offset
+# id_tax and taxeco_id should be identical 
 match_id <- taxeco_id$Cluster_ID %in% id_tax$Cluster_ID
 as.factor(match_id) %>% 
   levels()
 which(match_id == "FALSE", arr.ind = T) # mismatch at row 240
+## not same length row between id_tax (998) and taxeco (999): not normal, can cause offset
+## can be explained by forgetting an OTU during manual process that lead to offset everything.
 
-taxeco_id <- taxeco_id[-240,]
+# cluster is identified as "Fungi": no relevance in our analysis, we can then delete it
+taxeco_id <- taxeco_id[-240,] # deletion of row 240
 
 match_id <- taxeco_id$Cluster_ID %in% id_tax$Cluster_ID # checking if resolved
 as.factor(match_id) %>% 
   levels()
-which(match_id == "FALSE", arr.ind = T) # good
+which(match_id == "FALSE", arr.ind = T) # good. no more mismatch
 
-###
+## We need to merge the "tax_f" which includes whole fungal community but is lacking tax-ecological traits (only attributed from 1st 1000 OTUs), with "taxeco_id" that includes their reference from SCATA with the dataset manually IDed + FunGuild attribution. 
 taxeco_id$Cluster_Size <- id_tax$Cluster_Size # reattributing the proper cluster_size values
 
 taxeco2 <- merge(tax_f, taxeco_id, all = T) %>%
   arrange(order) # merging taxeco and idtaxeco  
-## enable to merge the "tax_f" where all fungi clusters are present with their reference from SCATA with "taxeco_id" the dataset manually IDed + FunGuild attribution. 
 
 rownames(taxeco2) <- taxeco2$Cluster_ID
 
-# putting reference of AUTO_ID in OTU_ID
+# attribution of automatic ID (ie reference) for OTU that were not manually reviewed
 which(taxeco2[,"ID_TYPE"] == "MANUAL_ID") %>% length() # finding the rows NOT concerned
 taxeco2$OTU_ID <- as.character(taxeco2$OTU_ID) # putting as character for next line
-taxeco2$OTU_ID <- c(taxeco2$OTU_ID[1:998],  taxeco2$Reference[999:length(taxeco2$Reference)]) # merging reference and otu_id 
+taxeco2$OTU_ID <- c(taxeco2$OTU_ID[1:998],  taxeco2$Reference[999:length(taxeco2$Reference)]) # merging reference and otu_id together
+# AUTO_ID OTUs have tax-ecological traits column from FunGuild with NAs values but have now value in OTU_ID column
   
-# subsetting interesting variables
+# subsetting interesting variables by keeping only tax-ecological traits 
 colnames(taxeco2)
-taxeco <- taxeco2[, c(17:24,1)]
+taxeco <- taxeco2[, c(17:24,1)] 
 taxeco <- sapply(taxeco, as.character) 
 rownames(taxeco) <- rownames(taxeco2) # cluster name in row
 colnames(taxeco)
-colnames(taxeco)[8] <- "Fruitbody"
+colnames(taxeco)[8] <- "Fruitbody" # change variable name
 ```
 ```{r sample data}
 # sample data
@@ -387,11 +386,11 @@ colnames(otu1) <- colnames(otu_fungi)
 otu_relative <- prop.table(otu1, margin = 2) # margin = 2 -> column sum and relative abundances
 verif_sum <- colSums(otu_relative) %>% summary() %>% print() # # verification: ok if 1 and some NAs
 otu_001_transf <- ifelse(otu_relative>0.01,otu1,0) # creating a new matrix where <1% reads are transformed into 0
-otu_001 <- subset(otu_001_transf, !rowSums(otu_001_transf) == 0)
+otu_001 <- subset(otu_001_transf, !rowSums(otu_001_transf) == 0) # deleting clusters with 0 
 
 nrow(otu_001_transf)
 nrow(otu_001)
-nrow(otu_001_transf) - nrow(otu_001) # 1930 clusters with relative abundance < 1% = suppressed -> 299 conserved 
+nrow(otu_001_transf) - nrow(otu_001) # 1930 clusters with relative abundance < 1% = suppressed -> 299 conserved (all fungal type)
 
 otu_notrarefied <- otu_001
 
@@ -423,7 +422,7 @@ verif_sum_hell <- colSums(otu_hellinger) %>% summary() %>% print() # # verificat
 ```
 
 ```{r otu rarefaction}
-# data properties BEFCE rarefaction
+# data properties before rarefaction
 rd_sps <- data.frame(rownames(otu_001), rowSums(otu_001)) # read sum per sample
 hist(rd_sps$rowSums.otu_001.)
 
@@ -435,7 +434,8 @@ otu_t <- matrix(as.numeric(unlist(otu_t0)),
 rownames(otu_t) <- rownames(otu_t0)
 colnames(otu_t) <- colnames(otu_t0)
 
-otu_rarefied <- as.data.frame(rrarefy(otu_t, min(rowSums(otu_t)))) # apply rarefaction
+rownames(otu_t)
+otu_rarefied <- as.data.frame(rrarefy(otu_t, min(rowSums(otu_t)))) # apply rarefaction on nb of total reads per sample (all fungal types)
 otu_rarefied <- t(otu_rarefied)
 otu_rarefied <- matrix(as.numeric(unlist(otu_rarefied)),
               ncol = ncol(otu_rarefied),
@@ -445,6 +445,9 @@ rownames(otu_rarefied) <- rownames(otu_001)
 colnames(otu_rarefied) <- colnames(otu_001)
 
 # data properties BEFCE - AFTER rarefaction
+hist(colSums(otu_t)) # before raref
+hist(colSums(otu_rarefied)) # after raref
+#
 summary(colSums(otu_001))
 rd_sps_raref <- data.frame(colnames(otu_001), colSums(otu_001), colSums(otu_rarefied)) # read sum per sample
 colnames(rd_sps_raref) <- c("sample_id", "sumreads_notrarefied", "sumreads_otu_rarefied")
