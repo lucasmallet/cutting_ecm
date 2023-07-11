@@ -324,7 +324,7 @@ equal_sample18 <- rbind(
 table(equal_sample18$treatment_code)
 sam18 <- equal_sample18
 
-sam <- rbind(sam12, sam18)
+sam_1218 <- rbind(sam12, sam18) # do the subsampling after physeq creation 
 ```
 
 ```{r otu table}
@@ -373,28 +373,13 @@ otu_fungi_t0 <- t(otu_fungi_all) %>% as.data.frame()
 otu_fungi_hala <- otu_fungi_t0 %>%
   filter(rownames(otu_fungi_t0) %in% rownames(sam_hala)) 
 
-otu_not_in_hala <- which(colSums(otu_fungi_hala) == 0) # 1182 clusters
-otu_fungi_hala <- otu_fungi_hala[, -otu_not_in_hala]
-ncol(otu_fungi_hala)
-nrow(otu_fungi_hala)
-
 # halasen 5p
 otu_fungi_hala5p <- otu_fungi_t0 %>%
   filter(rownames(otu_fungi_t0) %in% rownames(sam_hala5p)) 
 
-otu_not_in_hala5p <- which(colSums(otu_fungi_hala5p) == 0) # 1182 clusters
-otu_fungi_hala5p <- otu_fungi_hala5p[, -otu_fungi_hala5p]
-ncol(otu_fungi_hala5p)
-nrow(otu_fungi_hala5p)
-
 # fangamon
 otu_fungi_fanga <- otu_fungi_t0 %>%
   filter(rownames(otu_fungi_t0) %in% rownames(sam_fanga)) 
-
-otu_not_in_fanga <- which(colSums(otu_fungi_fanga) == 0) # 1182 clusters
-otu_fungi_fanga <- otu_fungi_fanga[, -otu_fungi_fanga]
-ncol(otu_fungi_fanga)
-nrow(otu_fungi_fanga)
 
 ###
 otu_fungi <- t(otu_fungi_hala)
@@ -447,19 +432,19 @@ colnames(otu3) <- colnames(otu_fungi_fanga)
 # suppression of <1 %
 otu_relative1 <- prop.table(otu1, margin = 2) # margin = 2 -> column sum and relative abundances
 otu_001_transf1 <- ifelse(otu_relative1 > 0.01,otu1,0) # creating a new matrix where <1% reads are transformed into 0
-otu_001_1 <- subset(otu_001_transf1, !rowSums(otu_001_transf1) == 0) # deleting clusters with 0 
+otu_001_1 <- otu_001_transf1
 
 otu_relative2 <- prop.table(otu2, margin = 2) 
 otu_001_transf2 <- ifelse(otu_relative2 > 0.01, otu2, 0) 
-otu_001_2 <- subset(otu_001_transf2, !rowSums(otu_001_transf2) == 0) 
+otu_001_2 <- otu_001_transf2
 
 otu_relative3 <- prop.table(otu3, margin = 2) 
 otu_001_transf3 <- ifelse(otu_relative3 > 0.01, otu3, 0) 
-otu_001_3 <- subset(otu_001_transf3, !rowSums(otu_001_transf3) == 0)
+otu_001_3 <- otu_001_transf3
 ```
 ```{r otu rarefaction all}
 # rarefaction based on all 
-otu_t01 <- t(otu_t01)
+otu_t01 <- t(otu_001_1)
 otu_t1 <- matrix(as.numeric(unlist(otu_t01)),
               ncol = ncol(otu_t01),
               nrow = nrow(otu_t01))
@@ -484,13 +469,29 @@ otu_rarefied1 <- as.data.frame(rrarefy(otu_t1, min(rowSums(otu_t1))))
 otu_rarefied2 <- as.data.frame(rrarefy(otu_t2, min(rowSums(otu_t2)))) 
 otu_rarefied3 <- as.data.frame(rrarefy(otu_t3, min(rowSums(otu_t3)))) 
 
-otu_rarefied <- t(otu_rarefied)
-otu_rarefied <- matrix(as.numeric(unlist(otu_rarefied)),
-              ncol = ncol(otu_rarefied),
-              nrow = nrow(otu_rarefied))
+otu_rarefied1 <- t(otu_rarefied1)
+otu_rarefied1 <- matrix(as.numeric(unlist(otu_rarefied1)),
+              ncol = ncol(otu_rarefied1),
+              nrow = nrow(otu_rarefied1))
+rownames(otu_rarefied1) <- rownames(otu_001_1)
+colnames(otu_rarefied1) <- colnames(otu_001_1)
 
-rownames(otu_rarefied) <- rownames(otu_001)
-colnames(otu_rarefied) <- colnames(otu_001)
+otu_rarefied2 <- t(otu_rarefied2)
+otu_rarefied2 <- matrix(as.numeric(unlist(otu_rarefied2)),
+              ncol = ncol(otu_rarefied2),
+              nrow = nrow(otu_rarefied2))
+rownames(otu_rarefied2) <- rownames(otu_001_2)
+colnames(otu_rarefied2) <- colnames(otu_001_2)
+
+otu_rarefied3 <- t(otu_rarefied3)
+otu_rarefied3 <- matrix(as.numeric(unlist(otu_rarefied3)),
+              ncol = ncol(otu_rarefied3),
+              nrow = nrow(otu_rarefied3))
+rownames(otu_rarefied3) <- rownames(otu_001_3)
+colnames(otu_rarefied3) <- colnames(otu_001_3)
+
+# merging together
+otu_rarefied <- cbind(otu_rarefied1, otu_rarefied2, otu_rarefied3)
 
 # data properties BEFCE - AFTER rarefaction
 hist(colSums(otu_t)) # before raref
@@ -688,7 +689,7 @@ df_div_relat[, c(3:12)] <- lapply(df_div_relat[, c(3:12)], as.factor) # tranform
 
 ## relative abundance
 # Agglomerate taxa at phylum level
-phy_relat <- tax_glom(phy, taxrank = "primary_lifestyle")
+phy_relat <- tax_glom(physeq, taxrank = "primary_lifestyle")
 
 # Calculate relative abundance
 phy_relat1 <- transform_sample_counts(phy_relat, function(x) x / sum(x))
@@ -696,9 +697,9 @@ phy_relat1 <- transform_sample_counts(phy_relat, function(x) x / sum(x))
 # Subset object to only ECM
 phy_relat2 <- subset_taxa(phy_relat1, primary_lifestyle == "ectomycorrhizal")
 ecm_abun <- colSums(phy_relat2@otu_table) # total sum of ECM relative abundance / sample
-ecm_abun_df <- data.frame(phy_relat2@sam_data$sample_id, phy_relat2@sam_data$plot, phy_relat2@sam_data$year, phy_relat2@sam_data$treatment_code, ecm_abun)
-colnames(ecm_abun_df) <- c("sample_id", "plot", "year", "treatment_code", "ecm_abun")
-ecm_abun_df[, c(2:4)] <- lapply(ecm_abun_df[, c(2:4)], as.factor) # tranforming columns into factors
+ecm_abun_df <- data.frame(phy_relat2@sam_data$sample_id, phy_relat2@sam_data$site, phy_relat2@sam_data$plot, phy_relat2@sam_data$year, phy_relat2@sam_data$treatment_code, ecm_abun)
+colnames(ecm_abun_df) <- c("sample_id", "site", "plot", "year", "treatment_code", "ecm_abun")
+ecm_abun_df[, c(2:5)] <- lapply(ecm_abun_df[, c(2:5)], as.factor) # tranforming columns into factors
 ecm_abun_df$ecm_abun <- pmax(ecm_abun_df$ecm_abun, 0.001) # adding a small constant to every values to respect beta_family requirements
 
 ecm_abun_df12 <- subset(ecm_abun_df, year == "2012")
